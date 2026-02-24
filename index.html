@@ -17,7 +17,7 @@
         }
         
         body {
-            background: #050510;
+            background: #000;
             overflow: hidden;
             font-family: 'Courier New', monospace;
         }
@@ -28,13 +28,6 @@
             position: relative;
         }
         
-        .ui-overlay {
-            position: absolute;
-            pointer-events: none;
-            z-index: 100;
-        }
-        
-        /* CRT Scanline Effect */
         .scanlines {
             position: fixed;
             top: 0;
@@ -78,349 +71,68 @@
 
     <script>
         // ==========================================
-        // ARCANE NEXUS: SCI-FI MAGE ARENA
-        // Complete Game Implementation
+        // ARCANE NEXUS: COMPLETE WORKING GAME
         // ==========================================
 
-        // Game Constants
         const CONSTANTS = {
             WORLD_WIDTH: 1600,
             WORLD_HEIGHT: 1200,
-            PLAYER_SPEED: 280,
-            DASH_SPEED: 600,
+            PLAYER_SPEED: 300,
             ENERGY_MAX: 100,
             OVERLOAD_MAX: 100,
-            OVERLOAD_THRESHOLD: 80,
-            SKILL_COOLDOWN_REDUCTION: 0.85,
-            DAMAGE_BOOST_AT_OVERLOAD: 1.5,
-            STUN_DURATION: 2000,
-            MATCH_DURATION: 300, // 5 minutes
-            WAVE_INTERVAL: 15000
+            OVERLOAD_THRESHOLD: 80
         };
 
-        // Mage Class Definitions
-        const MAGE_CLASSES = {
+        const MAGES = {
             VOID: {
                 id: 'void',
                 name: 'VOID MAGE',
                 color: 0x9d00ff,
-                role: 'Controller / Area Denial',
+                desc: 'Gravity control and black holes',
                 health: 100,
-                energyRegen: 8,
-                passive: {
-                    name: 'Event Horizon',
-                    description: 'Nearby enemies are slowed by 20%'
-                },
-                skills: [
-                    {
-                        name: 'Gravity Well',
-                        key: 'skill1',
-                        cooldown: 4000,
-                        energyCost: 20,
-                        damage: 25,
-                        description: 'Create a gravity well that pulls enemies',
-                        duration: 3000
-                    },
-                    {
-                        name: 'Singularity',
-                        key: 'skill2',
-                        cooldown: 6000,
-                        energyCost: 30,
-                        damage: 40,
-                        description: 'Launch a slow-moving black hole projectile',
-                        duration: 4000
-                    },
-                    {
-                        name: 'Void Shield',
-                        key: 'skill3',
-                        cooldown: 8000,
-                        energyCost: 25,
-                        damage: 0,
-                        description: 'Absorb projectiles and convert to energy',
-                        duration: 2500
-                    }
-                ],
-                ultimate: {
-                    name: 'Space Collapse',
-                    cooldown: 25000,
-                    energyCost: 50,
-                    damage: 80,
-                    description: 'Massive area implosion that stuns all enemies',
-                    duration: 3000,
-                    radius: 300
-                },
-                strengths: ['Area control', 'Crowd management', 'Defensive utility'],
-                weaknesses: ['Low mobility', 'Delayed damage', 'High energy costs']
+                skills: ['Gravity Well', 'Void Orb', 'Shield'],
+                ultimate: 'Black Hole'
             },
-            
-            TECH_FLAME: {
-                id: 'tech_flame',
-                name: 'TECH FLAME MAGE',
+            FLAME: {
+                id: 'flame',
+                name: 'FLAME MAGE',
                 color: 0xff4400,
-                role: 'Damage / Sustained DPS',
+                desc: 'Plasma fire and explosions',
                 health: 90,
-                energyRegen: 12,
-                passive: {
-                    name: 'Combustion Engine',
-                    description: 'Skills generate heat. At max heat, enter OVERDRIVE (+30% damage)'
-                },
-                skills: [
-                    {
-                        name: 'Plasma Stream',
-                        key: 'skill1',
-                        cooldown: 2000,
-                        energyCost: 15,
-                        damage: 15,
-                        description: 'Continuous beam of plasma fire',
-                        duration: 2000,
-                        isChanneling: true
-                    },
-                    {
-                        name: 'Heat Wave',
-                        key: 'skill2',
-                        cooldown: 5000,
-                        energyCost: 25,
-                        damage: 35,
-                        description: 'Radial burst of superheated air',
-                        duration: 500
-                    },
-                    {
-                        name: 'Inferno Dash',
-                        key: 'skill3',
-                        cooldown: 6000,
-                        energyCost: 20,
-                        damage: 30,
-                        description: 'Dash forward leaving a fire trail',
-                        duration: 1000
-                    }
-                ],
-                ultimate: {
-                    name: 'Solar Detonation',
-                    cooldown: 20000,
-                    energyCost: 45,
-                    damage: 100,
-                    description: 'Massive explosion centered on caster',
-                    duration: 2000,
-                    radius: 250
-                },
-                strengths: ['High damage output', 'Area denial', 'Mobility'],
-                weaknesses: ['Low health', 'Overheat management', 'Close range']
+                skills: ['Fire Beam', 'Fireball', 'Dash'],
+                ultimate: 'Supernova'
             },
-            
-            CYBER_LIGHTNING: {
-                id: 'cyber_lightning',
-                name: 'CYBER LIGHTNING MAGE',
+            LIGHTNING: {
+                id: 'lightning',
+                name: 'STORM MAGE',
                 color: 0x00ffff,
-                role: 'Assassin / Burst Damage',
+                desc: 'Lightning and teleportation',
                 health: 80,
-                energyRegen: 15,
-                passive: {
-                    name: 'Static Charge',
-                    description: 'Movement builds static. Next skill deals +25% damage at max charge'
-                },
-                skills: [
-                    {
-                        name: 'Chain Lightning',
-                        key: 'skill1',
-                        cooldown: 3000,
-                        energyCost: 20,
-                        damage: 30,
-                        description: 'Bounces between up to 3 enemies',
-                        bounces: 3
-                    },
-                    {
-                        name: 'Flash Step',
-                        key: 'skill2',
-                        cooldown: 4000,
-                        energyCost: 15,
-                        damage: 20,
-                        description: 'Instant teleport to target location',
-                        range: 200
-                    },
-                    {
-                        name: 'Thunder Strike',
-                        key: 'skill3',
-                        cooldown: 5000,
-                        energyCost: 25,
-                        damage: 45,
-                        description: 'Call down lightning at target area',
-                        delay: 800
-                    }
-                ],
-                ultimate: {
-                    name: 'EMP Storm',
-                    cooldown: 22000,
-                    energyCost: 50,
-                    damage: 60,
-                    description: 'Disable all enemy skills for 4s + damage',
-                    duration: 4000,
-                    radius: 350,
-                    disableDuration: 4000
-                },
-                strengths: ['High mobility', 'Burst damage', 'Disruption'],
-                weaknesses: ['Fragile', 'Skill dependent', 'Energy hungry']
+                skills: ['Chain Lightning', 'Teleport', 'Strike'],
+                ultimate: 'EMP Blast'
             },
-            
             CHRONO: {
                 id: 'chrono',
                 name: 'CHRONO MAGE',
                 color: 0xffd700,
-                role: 'Support / Utility',
+                desc: 'Time manipulation',
                 health: 85,
-                energyRegen: 10,
-                passive: {
-                    name: 'Temporal Flow',
-                    description: 'All cooldowns recharge 20% faster'
-                },
-                skills: [
-                    {
-                        name: 'Time Rift',
-                        key: 'skill1',
-                        cooldown: 6000,
-                        energyCost: 25,
-                        damage: 0,
-                        description: 'Create zone where enemies are slowed 50%',
-                        duration: 4000,
-                        slowAmount: 0.5
-                    },
-                    {
-                        name: 'Rewind',
-                        key: 'skill2',
-                        cooldown: 10000,
-                        energyCost: 30,
-                        damage: 0,
-                        description: 'Return to position 3 seconds ago, restore 30% health',
-                        healPercent: 0.3
-                    },
-                    {
-                        name: 'Accelerate',
-                        key: 'skill3',
-                        cooldown: 8000,
-                        energyCost: 20,
-                        damage: 0,
-                        description: 'Boost ally speed by 40% for 3s',
-                        duration: 3000,
-                        speedBoost: 1.4
-                    }
-                ],
-                ultimate: {
-                    name: 'Time Freeze',
-                    cooldown: 30000,
-                    energyCost: 60,
-                    damage: 0,
-                    description: 'Freeze all enemies in place for 3 seconds',
-                    duration: 3000,
-                    radius: 400
-                },
-                strengths: ['Crowd control', 'Survivability', 'Team utility'],
-                weaknesses: ['Low damage', 'Complex mechanics', 'Ultimate dependent']
+                skills: ['Slow Field', 'Rewind', 'Haste'],
+                ultimate: 'Time Stop'
             },
-            
             NANO: {
                 id: 'nano',
                 name: 'NANO MAGE',
                 color: 0x00ff88,
-                role: 'Healer / Summoner',
+                desc: 'Healing and constructs',
                 health: 110,
-                energyRegen: 9,
-                passive: {
-                    name: 'Nanite Repair',
-                    description: 'Slowly regenerate health over time (2% per second)'
-                },
-                skills: [
-                    {
-                        name: 'Repair Swarm',
-                        key: 'skill1',
-                        cooldown: 5000,
-                        energyCost: 25,
-                        damage: 0,
-                        heal: 25,
-                        description: 'Heal target ally or self',
-                        range: 250
-                    },
-                    {
-                        name: 'Construct',
-                        key: 'skill2',
-                        cooldown: 12000,
-                        energyCost: 35,
-                        damage: 15,
-                        description: 'Summon autonomous drone that attacks enemies',
-                        duration: 8000,
-                        health: 50
-                    },
-                    {
-                        name: 'Nano Shield',
-                        key: 'skill3',
-                        cooldown: 7000,
-                        energyCost: 20,
-                        damage: 0,
-                        description: 'Grant damage reduction shield to ally',
-                        duration: 4000,
-                        damageReduction: 0.5
-                    }
-                ],
-                ultimate: {
-                    name: 'Regeneration Dome',
-                    cooldown: 28000,
-                    energyCost: 55,
-                    damage: 0,
-                    heal: 15,
-                    description: 'Large zone of rapid healing and status cleanse',
-                    duration: 6000,
-                    radius: 300,
-                    healPerSecond: 15
-                },
-                strengths: ['Sustain', 'Minion control', 'Defense'],
-                weaknesses: ['Low burst damage', 'Dependent on team', 'Long cooldowns']
-            }
-        };
-
-        // Enemy AI Types
-        const ENEMY_TYPES = {
-            AGGRESSIVE: {
-                name: 'Berserker Bot',
-                health: 80,
-                speed: 220,
-                behavior: 'aggressive',
-                attackRange: 150,
-                color: 0xff0044,
-                skills: ['charge', 'slash']
-            },
-            TACTICAL: {
-                name: 'Tactician Core',
-                health: 70,
-                speed: 180,
-                behavior: 'tactical',
-                attackRange: 300,
-                color: 0x4488ff,
-                skills: ['sniper', 'mine', 'retreat']
-            },
-            SUPPORT: {
-                name: 'Repair Drone',
-                health: 60,
-                speed: 200,
-                behavior: 'support',
-                attackRange: 250,
-                color: 0x44ff88,
-                skills: ['heal_ally', 'shield_ally']
-            },
-            BOSS: {
-                name: 'Nexus Guardian',
-                health: 500,
-                speed: 150,
-                behavior: 'boss',
-                attackRange: 200,
-                color: 0xff00ff,
-                phases: [
-                    { healthThreshold: 0.7, skills: ['slam', 'laser'] },
-                    { healthThreshold: 0.4, skills: ['summon', 'nova'] },
-                    { healthThreshold: 0.2, skills: ['enrage', 'ultimate'] }
-                ]
+                skills: ['Heal', 'Drone', 'Barrier'],
+                ultimate: 'Healing Zone'
             }
         };
 
         // ==========================================
-        // SCENE: BOOT
+        // BOOT SCENE - Generate all textures
         // ==========================================
         class BootScene extends Phaser.Scene {
             constructor() {
@@ -428,244 +140,94 @@
             }
 
             preload() {
-                // Create procedural textures
-                this.load.setBaseURL('');
-                
-                // Generate textures programmatically
-                this.createPlayerTexture();
-                this.createEnemyTexture();
-                this.createProjectileTexture();
-                this.createSkillTextures();
-                this.createUITextures();
-                this.createEnvironmentTextures();
+                this.createTextures();
             }
 
-            createPlayerTexture() {
-                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+            createTextures() {
+                const g = this.make.graphics({ x: 0, y: 0, add: false });
                 
-                // Base mage circle
-                graphics.fillStyle(0xffffff);
-                graphics.fillCircle(32, 32, 30);
-                graphics.generateTexture('player_base', 64, 64);
-                graphics.clear();
-                
-                // Aura effect
-                for (let i = 0; i < 3; i++) {
-                    graphics.lineStyle(2, 0xffffff, 0.3 - i * 0.1);
-                    graphics.strokeCircle(32, 32, 35 + i * 5);
-                }
-                graphics.generateTexture('aura', 64, 64);
-            }
+                // Player
+                g.fillStyle(0xffffff);
+                g.fillCircle(32, 32, 30);
+                g.generateTexture('player', 64, 64);
+                g.clear();
 
-            createEnemyTexture() {
-                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-                
-                // Aggressive enemy
-                graphics.fillStyle(ENEMY_TYPES.AGGRESSIVE.color);
-                graphics.beginPath();
-                graphics.moveTo(32, 8);
-                graphics.lineTo(56, 48);
-                graphics.lineTo(8, 48);
-                graphics.closePath();
-                graphics.fillPath();
-                graphics.generateTexture('enemy_aggressive', 64, 64);
-                graphics.clear();
-                
-                // Tactical enemy
-                graphics.fillStyle(ENEMY_TYPES.TACTICAL.color);
-                graphics.fillRect(16, 16, 32, 32);
-                graphics.generateTexture('enemy_tactical', 64, 64);
-                graphics.clear();
-                
-                // Support enemy
-                graphics.fillStyle(ENEMY_TYPES.SUPPORT.color);
-                graphics.fillCircle(32, 32, 24);
-                graphics.generateTexture('enemy_support', 64, 64);
-                graphics.clear();
-                
+                // Enemy
+                g.fillStyle(0xff0044);
+                g.fillTriangle(32, 8, 56, 56, 8, 56);
+                g.generateTexture('enemy', 64, 64);
+                g.clear();
+
                 // Boss
-                graphics.fillStyle(ENEMY_TYPES.BOSS.color);
-                graphics.beginPath();
-                graphics.moveTo(32, 8);
-                graphics.lineTo(56, 24);
-                graphics.lineTo(56, 40);
-                graphics.lineTo(32, 56);
-                graphics.lineTo(8, 40);
-                graphics.lineTo(8, 24);
-                graphics.closePath();
-                graphics.fillPath();
-                graphics.generateTexture('enemy_boss', 64, 64);
-            }
+                g.fillStyle(0xff00ff);
+                g.fillCircle(32, 32, 35);
+                g.generateTexture('boss', 70, 70);
+                g.clear();
 
-            createProjectileTexture() {
-                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-                
-                // Plasma bolt
-                graphics.fillStyle(0xff4400);
-                graphics.fillEllipse(16, 8, 32, 16);
-                graphics.generateTexture('proj_plasma', 32, 16);
-                graphics.clear();
-                
-                // Lightning
-                graphics.lineStyle(3, 0x00ffff);
-                graphics.beginPath();
-                graphics.moveTo(0, 0);
-                graphics.lineTo(16, 8);
-                graphics.lineTo(8, 16);
-                graphics.lineTo(24, 24);
-                graphics.strokePath();
-                graphics.generateTexture('proj_lightning', 32, 32);
-                graphics.clear();
-                
-                // Void orb
-                graphics.fillStyle(0x9d00ff);
-                graphics.fillCircle(16, 16, 14);
-                graphics.lineStyle(2, 0xffffff, 0.5);
-                graphics.strokeCircle(16, 16, 14);
-                graphics.generateTexture('proj_void', 32, 32);
-                graphics.clear();
-                
-                // Nano swarm
-                for (let i = 0; i < 5; i++) {
-                    graphics.fillStyle(0x00ff88);
-                    graphics.fillCircle(8 + i * 6, 16 + Math.sin(i) * 8, 3);
-                }
-                graphics.generateTexture('proj_nano', 32, 32);
-            }
+                // Projectile
+                g.fillStyle(0xffff00);
+                g.fillCircle(8, 8, 8);
+                g.generateTexture('bullet', 16, 16);
+                g.clear();
 
-            createSkillTextures() {
-                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-                
-                // Skill icons (64x64)
-                const skills = ['void', 'flame', 'lightning', 'chrono', 'nano'];
-                const colors = [0x9d00ff, 0xff4400, 0x00ffff, 0xffd700, 0x00ff88];
-                
-                skills.forEach((skill, idx) => {
-                    graphics.clear();
-                    // Background
-                    graphics.fillStyle(0x1a1a2e);
-                    graphics.fillRect(0, 0, 64, 64);
-                    // Border
-                    graphics.lineStyle(3, colors[idx]);
-                    graphics.strokeRect(2, 2, 60, 60);
-                    // Symbol
-                    graphics.fillStyle(colors[idx]);
-                    if (skill === 'void') {
-                        graphics.fillCircle(32, 32, 20);
-                        graphics.fillStyle(0x1a1a2e);
-                        graphics.fillCircle(32, 32, 12);
-                    } else if (skill === 'flame') {
-                        graphics.beginPath();
-                        graphics.moveTo(32, 12);
-                        graphics.lineTo(44, 40);
-                        graphics.lineTo(32, 36);
-                        graphics.lineTo(20, 40);
-                        graphics.closePath();
-                        graphics.fillPath();
-                    } else if (skill === 'lightning') {
-                        graphics.beginPath();
-                        graphics.moveTo(28, 12);
-                        graphics.lineTo(36, 28);
-                        graphics.lineTo(28, 28);
-                        graphics.lineTo(36, 52);
-                        graphics.lineTo(24, 32);
-                        graphics.lineTo(32, 32);
-                        graphics.closePath();
-                        graphics.fillPath();
-                    } else if (skill === 'chrono') {
-                        graphics.beginPath();
-                        graphics.arc(32, 32, 18, 0, Math.PI * 1.5);
-                        graphics.lineStyle(4, colors[idx]);
-                        graphics.strokePath();
-                        graphics.fillStyle(colors[idx]);
-                        graphics.fillRect(30, 14, 4, 20);
-                        graphics.fillRect(30, 30, 14, 4);
-                    } else if (skill === 'nano') {
-                        for (let i = 0; i < 3; i++) {
-                            for (let j = 0; j < 3; j++) {
-                                graphics.fillCircle(20 + i * 12, 20 + j * 12, 4);
-                            }
-                        }
-                    }
-                    graphics.generateTexture(`skill_${skill}`, 64, 64);
+                // Skill icons
+                Object.values(MAGES).forEach(mage => {
+                    g.fillStyle(0x1a1a3a);
+                    g.fillRect(0, 0, 64, 64);
+                    g.lineStyle(3, mage.color);
+                    g.strokeRect(2, 2, 60, 60);
+                    g.fillStyle(mage.color);
+                    g.fillCircle(32, 32, 20);
+                    g.generateTexture(`icon_${mage.id}`, 64, 64);
+                    g.clear();
                 });
-            }
 
-            createUITextures() {
-                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-                
-                // Joystick base
-                graphics.fillStyle(0x000000, 0.5);
-                graphics.fillCircle(64, 64, 60);
-                graphics.lineStyle(2, 0xffffff, 0.3);
-                graphics.strokeCircle(64, 64, 60);
-                graphics.generateTexture('joystick_base', 128, 128);
-                graphics.clear();
-                
-                // Joystick stick
-                graphics.fillStyle(0xffffff, 0.8);
-                graphics.fillCircle(32, 32, 25);
-                graphics.generateTexture('joystick_stick', 64, 64);
-                graphics.clear();
-                
-                // Energy bar bg
-                graphics.fillStyle(0x000000, 0.7);
-                graphics.fillRect(0, 0, 200, 20);
-                graphics.generateTexture('bar_bg', 200, 20);
-                graphics.clear();
-                
-                // Overload bar
-                graphics.fillStyle(0xff0044);
-                graphics.fillRect(0, 0, 200, 20);
-                graphics.generateTexture('bar_overload', 200, 20);
-                graphics.clear();
-                
-                // Energy fill
-                graphics.fillStyle(0x00aaff);
-                graphics.fillRect(0, 0, 200, 20);
-                graphics.generateTexture('bar_energy', 200, 20);
-                graphics.clear();
-                
-                // Health fill
-                graphics.fillStyle(0x00ff44);
-                graphics.fillRect(0, 0, 200, 20);
-                graphics.generateTexture('bar_health', 200, 20);
-                graphics.clear();
-            }
+                // Joystick
+                g.fillStyle(0x333333, 0.5);
+                g.fillCircle(64, 64, 60);
+                g.lineStyle(2, 0xffffff, 0.3);
+                g.strokeCircle(64, 64, 60);
+                g.generateTexture('joybase', 128, 128);
+                g.clear();
 
-            createEnvironmentTextures() {
-                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-                
-                // Floor tile
-                graphics.fillStyle(0x0a0a1a);
-                graphics.fillRect(0, 0, 64, 64);
-                graphics.lineStyle(1, 0x1a1a3a);
-                graphics.strokeRect(0, 0, 64, 64);
-                graphics.generateTexture('floor_tile', 64, 64);
-                graphics.clear();
-                
+                g.fillStyle(0xffffff, 0.8);
+                g.fillCircle(32, 32, 25);
+                g.generateTexture('joystick', 64, 64);
+                g.clear();
+
+                // Bars
+                g.fillStyle(0x000000, 0.8);
+                g.fillRect(0, 0, 200, 20);
+                g.generateTexture('barbg', 200, 20);
+                g.clear();
+
+                g.fillStyle(0x00ff44);
+                g.fillRect(0, 0, 200, 20);
+                g.generateTexture('healthbar', 200, 20);
+                g.clear();
+
+                g.fillStyle(0x00aaff);
+                g.fillRect(0, 0, 200, 20);
+                g.generateTexture('energybar', 200, 20);
+                g.clear();
+
+                g.fillStyle(0xff0044);
+                g.fillRect(0, 0, 200, 20);
+                g.generateTexture('overloadbar', 200, 20);
+                g.clear();
+
+                // Floor
+                g.fillStyle(0x0a0a1a);
+                g.fillRect(0, 0, 64, 64);
+                g.lineStyle(1, 0x1a1a3a);
+                g.strokeRect(0, 0, 64, 64);
+                g.generateTexture('floor', 64, 64);
+                g.clear();
+
                 // Wall
-                graphics.fillStyle(0x2a2a4a);
-                graphics.fillRect(0, 0, 64, 64);
-                graphics.lineStyle(2, 0x4a4a6a);
-                graphics.strokeRect(0, 0, 64, 64);
-                graphics.generateTexture('wall', 64, 64);
-                graphics.clear();
-                
-                // Teleporter
-                graphics.fillStyle(0x00ffff, 0.3);
-                graphics.fillCircle(32, 32, 30);
-                graphics.lineStyle(2, 0x00ffff);
-                graphics.strokeCircle(32, 32, 30);
-                graphics.generateTexture('teleporter', 64, 64);
-                graphics.clear();
-                
-                // Hazard
-                graphics.fillStyle(0xff0044, 0.3);
-                graphics.fillRect(0, 0, 64, 64);
-                graphics.lineStyle(2, 0xff0044);
-                graphics.strokeRect(0, 0, 64, 64);
-                graphics.generateTexture('hazard', 64, 64);
+                g.fillStyle(0x2a2a4a);
+                g.fillRect(0, 0, 64, 64);
+                g.generateTexture('wall', 64, 64);
             }
 
             create() {
@@ -674,7 +236,7 @@
         }
 
         // ==========================================
-        // SCENE: MENU
+        // MENU SCENE - Working menu with all buttons
         // ==========================================
         class MenuScene extends Phaser.Scene {
             constructor() {
@@ -682,103 +244,87 @@
             }
 
             create() {
-                // Background
-                this.createStarfield();
+                this.createBackground();
                 
                 // Title
-                const title = this.add.text(this.cameras.main.centerX, 80, 'ARCANE NEXUS', {
-                    fontFamily: 'Courier New',
+                this.add.text(this.cameras.main.centerX, 80, 'ARCANE NEXUS', {
                     fontSize: '48px',
                     fontStyle: 'bold',
                     color: '#00aaff'
                 }).setOrigin(0.5);
-                
-                const subtitle = this.add.text(this.cameras.main.centerX, 130, 'SCI-FI MAGE ARENA', {
-                    fontFamily: 'Courier New',
+
+                this.add.text(this.cameras.main.centerX, 140, 'SCI-FI MAGE ARENA', {
                     fontSize: '24px',
                     color: '#ff00ff'
                 }).setOrigin(0.5);
-                
-                // Glitch effect on title
-                this.tweens.add({
-                    targets: title,
-                    x: '+=2',
-                    duration: 50,
-                    yoyo: true,
-                    repeat: -1,
-                    repeatDelay: 2000
-                });
-                
-                // Menu options
-                const menuItems = [
-                    { text: '1v1 DUEL', scene: 'GameScene', mode: 'duel' },
-                    { text: '3v3 ARENA', scene: 'GameScene', mode: 'arena' },
-                    { text: 'SURVIVAL', scene: 'GameScene', mode: 'survival' },
-                    { text: 'BOSS MODE', scene: 'GameScene', mode: 'boss' },
-                    { text: 'MAGE SELECT', scene: 'SelectScene' }
+
+                // Menu buttons
+                const buttons = [
+                    { text: 'PLAY NOW', y: 250, action: () => this.scene.start('SelectScene') },
+                    { text: 'SURVIVAL MODE', y: 330, action: () => this.startGame('survival', 'void') },
+                    { text: 'BOSS BATTLE', y: 410, action: () => this.startGame('boss', 'void') }
                 ];
-                
-                let y = 250;
-                menuItems.forEach((item, index) => {
-                    const button = this.add.container(this.cameras.main.centerX, y);
-                    
-                    const bg = this.add.rectangle(0, 0, 280, 50, 0x1a1a3a)
-                        .setStrokeStyle(2, 0x00aaff);
-                    
-                    const text = this.add.text(0, 0, item.text, {
-                        fontFamily: 'Courier New',
-                        fontSize: '20px',
-                        color: '#ffffff'
-                    }).setOrigin(0.5);
-                    
-                    button.add([bg, text]);
-                    button.setSize(280, 50);
-                    button.setInteractive();
-                    
-                    button.on('pointerover', () => {
-                        bg.setFillStyle(0x2a2a5a);
-                        text.setColor('#00ffff');
-                    });
-                    
-                    button.on('pointerout', () => {
-                        bg.setFillStyle(0x1a1a3a);
-                        text.setColor('#ffffff');
-                    });
-                    
-                    button.on('pointerdown', () => {
-                        if (item.scene === 'GameScene') {
-                            this.scene.start(item.scene, { mode: item.mode, mageClass: 'void' });
-                        } else {
-                            this.scene.start(item.scene);
-                        }
-                    });
-                    
-                    y += 70;
+
+                buttons.forEach(btn => {
+                    this.createButton(btn.text, btn.y, btn.action);
                 });
-                
-                // Version info
-                this.add.text(20, this.cameras.main.height - 30, 'v1.0.0 OFFLINE BUILD', {
-                    fontFamily: 'Courier New',
-                    fontSize: '12px',
-                    color: '#666666'
-                });
+
+                // Instructions
+                this.add.text(this.cameras.main.centerX, 550, 
+                    'WASD or Left Stick to Move\nMouse or Right Stick to Aim\nClick skills or press Q,E,R,SPACE', {
+                    fontSize: '16px',
+                    color: '#888888',
+                    align: 'center'
+                }).setOrigin(0.5);
             }
 
-            createStarfield() {
+            createBackground() {
                 const graphics = this.add.graphics();
-                for (let i = 0; i < 200; i++) {
-                    const x = Phaser.Math.Between(0, this.cameras.main.width);
-                    const y = Phaser.Math.Between(0, this.cameras.main.height);
-                    const size = Phaser.Math.FloatBetween(0.5, 2);
-                    const alpha = Phaser.Math.FloatBetween(0.3, 1);
-                    graphics.fillStyle(0xffffff, alpha);
-                    graphics.fillCircle(x, y, size);
+                for (let i = 0; i < 100; i++) {
+                    graphics.fillStyle(0xffffff, Math.random() * 0.5);
+                    graphics.fillCircle(
+                        Math.random() * this.cameras.main.width,
+                        Math.random() * this.cameras.main.height,
+                        Math.random() * 2
+                    );
                 }
+            }
+
+            createButton(text, y, callback) {
+                const container = this.add.container(this.cameras.main.centerX, y);
+                
+                const bg = this.add.rectangle(0, 0, 300, 60, 0x1a1a3a)
+                    .setStrokeStyle(3, 0x00aaff);
+                
+                const txt = this.add.text(0, 0, text, {
+                    fontSize: '24px',
+                    color: '#ffffff'
+                }).setOrigin(0.5);
+
+                container.add([bg, txt]);
+                container.setSize(300, 60);
+                container.setInteractive({ useHandCursor: true });
+
+                container.on('pointerover', () => {
+                    bg.setFillStyle(0x2a2a5a);
+                    txt.setColor('#00ffff');
+                });
+
+                container.on('pointerout', () => {
+                    bg.setFillStyle(0x1a1a3a);
+                    txt.setColor('#ffffff');
+                });
+
+                container.on('pointerdown', callback);
+            }
+
+            startGame(mode, mage) {
+                this.scene.start('GameScene', { mode: mode, mage: mage });
             }
         }
 
         // ==========================================
-        // SCENE: MAGE SELECT
+        // SELECT SCENE - Choose your mage
         // ==========================================
         class SelectScene extends Phaser.Scene {
             constructor() {
@@ -786,147 +332,88 @@
             }
 
             create() {
-                this.createStarfield();
-                
-                this.add.text(this.cameras.main.centerX, 40, 'SELECT YOUR MAGE', {
-                    fontFamily: 'Courier New',
-                    fontSize: '32px',
+                this.add.text(this.cameras.main.centerX, 60, 'SELECT YOUR MAGE', {
+                    fontSize: '36px',
                     color: '#ffffff'
                 }).setOrigin(0.5);
-                
-                const classes = Object.values(MAGE_CLASSES);
-                const startX = 100;
-                const spacing = 140;
-                
-                classes.forEach((mage, index) => {
-                    const x = startX + index * spacing;
-                    const y = 200;
-                    
-                    const container = this.add.container(x, y);
-                    
-                    // Mage preview
-                    const circle = this.add.circle(0, 0, 50, mage.color);
-                    const inner = this.add.circle(0, 0, 40, 0x000000);
-                    const letter = this.add.text(0, 0, mage.name[0], {
-                        fontFamily: 'Courier New',
-                        fontSize: '36px',
-                        fontStyle: 'bold',
-                        color: '#ffffff'
-                    }).setOrigin(0.5);
-                    
-                    container.add([circle, inner, letter]);
-                    
-                    // Name
-                    const nameText = this.add.text(x, y + 70, mage.name.split(' ')[0], {
-                        fontFamily: 'Courier New',
-                        fontSize: '14px',
-                        color: '#ffffff'
-                    }).setOrigin(0.5);
-                    
-                    // Role
-                    const roleText = this.add.text(x, y + 90, mage.role, {
-                        fontFamily: 'Courier New',
-                        fontSize: '10px',
-                        color: '#aaaaaa'
-                    }).setOrigin(0.5);
-                    
-                    // Make interactive
-                    const hitArea = this.add.rectangle(x, y, 100, 120, 0x000000, 0);
-                    hitArea.setInteractive();
-                    
-                    hitArea.on('pointerover', () => {
-                        circle.setStrokeStyle(3, 0xffffff);
-                    });
-                    
-                    hitArea.on('pointerout', () => {
-                        circle.setStrokeStyle(0);
-                    });
-                    
-                    hitArea.on('pointerdown', () => {
-                        this.showMageDetails(mage);
-                    });
+
+                const mageList = Object.values(MAGES);
+                const startX = this.cameras.main.centerX - ((mageList.length - 1) * 80);
+
+                mageList.forEach((mage, index) => {
+                    this.createMageCard(mage, startX + index * 160, 200);
                 });
-                
+
                 // Back button
-                const back = this.add.text(40, this.cameras.main.height - 40, '< BACK', {
-                    fontFamily: 'Courier New',
+                const back = this.add.text(50, this.cameras.main.height - 50, '< BACK', {
                     fontSize: '20px',
                     color: '#00aaff'
-                }).setInteractive();
-                
-                back.on('pointerdown', () => {
-                    this.scene.start('MenuScene');
-                });
+                }).setInteractive({ useHandCursor: true });
+
+                back.on('pointerdown', () => this.scene.start('MenuScene'));
             }
 
-            showMageDetails(mage) {
-                // Clear previous details
-                if (this.detailsContainer) {
-                    this.detailsContainer.destroy();
-                }
+            createMageCard(mage, x, y) {
+                const container = this.add.container(x, y);
                 
-                this.detailsContainer = this.add.container(this.cameras.main.centerX, 450);
-                
-                // Background panel
-                const panel = this.add.rectangle(0, 0, 600, 280, 0x0a0a1a, 0.95)
+                // Card background
+                const bg = this.add.rectangle(0, 0, 140, 200, 0x0a0a1a)
                     .setStrokeStyle(2, mage.color);
                 
-                // Details text
-                const details = [
-                    `ROLE: ${mage.role}`,
-                    '',
-                    `PASSIVE: ${mage.passive.name}`,
-                    mage.passive.description,
-                    '',
-                    'SKILLS:',
-                    ...mage.skills.map(s => `• ${s.name}: ${s.description}`),
-                    '',
-                    `ULTIMATE: ${mage.ultimate.name}`,
-                    mage.ultimate.description,
-                    '',
-                    `STRENGTHS: ${mage.strengths.join(', ')}`,
-                    `WEAKNESSES: ${mage.weaknesses.join(', ')}`
-                ];
-                
-                const text = this.add.text(-280, -120, details.join('\n'), {
-                    fontFamily: 'Courier New',
-                    fontSize: '12px',
-                    color: '#ffffff',
-                    lineSpacing: 4
-                });
-                
+                // Mage circle
+                const circle = this.add.circle(0, -50, 40, mage.color);
+                const initial = this.add.text(0, -50, mage.name[0], {
+                    fontSize: '40px',
+                    fontStyle: 'bold',
+                    color: '#ffffff'
+                }).setOrigin(0.5);
+
+                // Name
+                const nameText = this.add.text(0, 10, mage.name.split(' ')[0], {
+                    fontSize: '14px',
+                    color: '#ffffff'
+                }).setOrigin(0.5);
+
+                // Description
+                const descText = this.add.text(0, 50, mage.desc, {
+                    fontSize: '10px',
+                    color: '#aaaaaa',
+                    align: 'center',
+                    wordWrap: { width: 120 }
+                }).setOrigin(0.5);
+
                 // Select button
-                const selectBtn = this.add.rectangle(0, 120, 200, 40, mage.color)
-                    .setInteractive();
+                const selectBtn = this.add.rectangle(0, 80, 100, 30, mage.color)
+                    .setInteractive({ useHandCursor: true });
                 
-                const btnText = this.add.text(0, 120, 'SELECT MAGE', {
-                    fontFamily: 'Courier New',
-                    fontSize: '16px',
+                const selectText = this.add.text(0, 80, 'SELECT', {
+                    fontSize: '14px',
                     color: '#000000',
                     fontStyle: 'bold'
                 }).setOrigin(0.5);
-                
-                selectBtn.on('pointerdown', () => {
-                    this.scene.start('GameScene', { mode: 'duel', mageClass: mage.id });
-                });
-                
-                this.detailsContainer.add([panel, text, selectBtn, btnText]);
-            }
 
-            createStarfield() {
-                const graphics = this.add.graphics();
-                for (let i = 0; i < 200; i++) {
-                    const x = Phaser.Math.Between(0, this.cameras.main.width);
-                    const y = Phaser.Math.Between(0, this.cameras.main.height);
-                    const size = Phaser.Math.FloatBetween(0.5, 2);
-                    graphics.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.3, 1));
-                    graphics.fillCircle(x, y, size);
-                }
+                container.add([bg, circle, initial, nameText, descText, selectBtn, selectText]);
+                container.setSize(140, 200);
+
+                // Hover effects
+                container.setInteractive();
+                container.on('pointerover', () => {
+                    bg.setStrokeStyle(4, 0xffffff);
+                    container.setScale(1.05);
+                });
+                container.on('pointerout', () => {
+                    bg.setStrokeStyle(2, mage.color);
+                    container.setScale(1);
+                });
+
+                selectBtn.on('pointerdown', () => {
+                    this.scene.start('GameScene', { mode: 'arena', mage: mage.id });
+                });
             }
         }
 
         // ==========================================
-        // SCENE: MAIN GAME
+        // GAME SCENE - Fully playable
         // ==========================================
         class GameScene extends Phaser.Scene {
             constructor() {
@@ -934,15 +421,15 @@
             }
 
             init(data) {
-                this.gameMode = data.mode || 'duel';
-                this.selectedMage = MAGE_CLASSES[data.mageClass?.toUpperCase()] || MAGE_CLASSES.VOID;
-                this.matchTime = CONSTANTS.MATCH_DURATION;
+                this.gameMode = data.mode || 'arena';
+                this.selectedMageId = data.mage || 'void';
+                this.selectedMage = MAGES[this.selectedMageId.toUpperCase()];
                 this.score = 0;
-                this.waveNumber = 1;
+                this.wave = 1;
             }
 
             create() {
-                // Setup world
+                // Setup physics
                 this.physics.world.setBounds(0, 0, CONSTANTS.WORLD_WIDTH, CONSTANTS.WORLD_HEIGHT);
                 
                 // Create arena
@@ -951,248 +438,118 @@
                 // Create player
                 this.createPlayer();
                 
-                // Create enemies based on mode
-                this.createEnemies();
+                // Create enemies
+                this.spawnEnemies();
                 
                 // Setup camera
                 this.cameras.main.setBounds(0, 0, CONSTANTS.WORLD_WIDTH, CONSTANTS.WORLD_HEIGHT);
                 this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-                this.cameras.main.setZoom(0.8);
+                this.cameras.main.setZoom(0.7);
+
+                // Setup controls
+                this.setupControls();
+                this.setupKeyboard();
                 
                 // Create UI
                 this.createUI();
                 
-                // Setup input
-                this.setupControls();
-                
-                // Create groups
-                this.projectiles = this.physics.add.group();
-                this.effects = this.add.group();
+                // Groups
+                this.bullets = this.physics.add.group();
                 this.enemies = this.physics.add.group();
-                this.constructs = this.physics.add.group();
-                
+                this.effects = this.add.group();
+
                 // Collisions
                 this.setupCollisions();
-                
+
                 // Timers
-                this.time.addEvent({
-                    delay: 1000,
-                    callback: this.updateMatchTimer,
-                    callbackScope: this,
-                    loop: true
-                });
+                this.time.addEvent({ delay: 1000, callback: this.regenEnergy, callbackScope: this, loop: true });
                 
-                // Wave timer for survival
                 if (this.gameMode === 'survival') {
-                    this.time.addEvent({
-                        delay: CONSTANTS.WAVE_INTERVAL,
-                        callback: this.spawnWave,
-                        callbackScope: this,
-                        loop: true
-                    });
-                }
-                
-                // Passive regeneration for Nano
-                if (this.selectedMage.id === 'nano') {
-                    this.time.addEvent({
-                        delay: 500,
-                        callback: () => {
-                            if (this.player && this.player.active) {
-                                this.healPlayer(this.player.maxHealth * 0.01);
-                            }
-                        },
-                        callbackScope: this,
-                        loop: true
-                    });
+                    this.time.addEvent({ delay: 10000, callback: this.nextWave, callbackScope: this, loop: true });
                 }
             }
 
             createArena() {
-                // Floor
-                const tileSize = 64;
-                for (let x = 0; x < CONSTANTS.WORLD_WIDTH; x += tileSize) {
-                    for (let y = 0; y < CONSTANTS.WORLD_HEIGHT; y += tileSize) {
-                        this.add.image(x + tileSize/2, y + tileSize/2, 'floor_tile')
-                            .setAlpha(0.5);
+                // Floor tiles
+                for (let x = 0; x < CONSTANTS.WORLD_WIDTH; x += 64) {
+                    for (let y = 0; y < CONSTANTS.WORLD_HEIGHT; y += 64) {
+                        this.add.image(x + 32, y + 32, 'floor').setAlpha(0.5);
                     }
                 }
-                
-                // Walls (create arena boundary)
+
+                // Walls (arena boundary)
                 this.walls = this.physics.add.staticGroup();
                 
-                // Top and bottom walls
+                // Border walls
                 for (let x = 0; x < CONSTANTS.WORLD_WIDTH; x += 64) {
                     this.walls.create(x + 32, 32, 'wall');
                     this.walls.create(x + 32, CONSTANTS.WORLD_HEIGHT - 32, 'wall');
                 }
-                
-                // Left and right walls
                 for (let y = 64; y < CONSTANTS.WORLD_HEIGHT - 64; y += 64) {
                     this.walls.create(32, y + 32, 'wall');
                     this.walls.create(CONSTANTS.WORLD_WIDTH - 32, y + 32, 'wall');
                 }
-                
-                // Random obstacles based on mode
-                const obstacleCount = this.gameMode === 'boss' ? 8 : 15;
+
+                // Random obstacles
+                const obstacleCount = this.gameMode === 'boss' ? 6 : 12;
                 for (let i = 0; i < obstacleCount; i++) {
                     const x = Phaser.Math.Between(200, CONSTANTS.WORLD_WIDTH - 200);
                     const y = Phaser.Math.Between(200, CONSTANTS.WORLD_HEIGHT - 200);
                     this.walls.create(x, y, 'wall');
                 }
-                
-                // Teleporters
-                this.teleporters = this.physics.add.staticGroup();
-                for (let i = 0; i < 4; i++) {
-                    const x = Phaser.Math.Between(300, CONSTANTS.WORLD_WIDTH - 300);
-                    const y = Phaser.Math.Between(300, CONSTANTS.WORLD_HEIGHT - 300);
-                    const tele = this.teleporters.create(x, y, 'teleporter');
-                    tele.setAlpha(0.7);
-                    
-                    // Pulse animation
-                    this.tweens.add({
-                        targets: tele,
-                        scale: 1.2,
-                        alpha: 0.4,
-                        duration: 1000,
-                        yoyo: true,
-                        repeat: -1
-                    });
-                }
-                
-                // Hazards
-                this.hazards = this.physics.add.staticGroup();
-                for (let i = 0; i < 6; i++) {
-                    const x = Phaser.Math.Between(400, CONSTANTS.WORLD_WIDTH - 400);
-                    const y = Phaser.Math.Between(400, CONSTANTS.WORLD_HEIGHT - 400);
-                    this.hazards.create(x, y, 'hazard');
-                }
-                
-                // Visual effects - ambient particles
-                this.createAmbientEffects();
-            }
-
-            createAmbientEffects() {
-                // Floating energy particles
-                for (let i = 0; i < 50; i++) {
-                    const x = Phaser.Math.Between(0, CONSTANTS.WORLD_WIDTH);
-                    const y = Phaser.Math.Between(0, CONSTANTS.WORLD_HEIGHT);
-                    const particle = this.add.circle(x, y, 2, this.selectedMage.color, 0.5);
-                    
-                    this.tweens.add({
-                        targets: particle,
-                        y: y - 100,
-                        alpha: 0,
-                        duration: Phaser.Math.Between(3000, 6000),
-                        repeat: -1,
-                        delay: Phaser.Math.Between(0, 3000)
-                    });
-                }
             }
 
             createPlayer() {
-                const startX = CONSTANTS.WORLD_WIDTH / 2;
-                const startY = CONSTANTS.WORLD_HEIGHT / 2;
-                
-                this.player = this.physics.add.sprite(startX, startY, 'player_base');
+                const x = CONSTANTS.WORLD_WIDTH / 2;
+                const y = CONSTANTS.WORLD_HEIGHT / 2;
+
+                this.player = this.physics.add.sprite(x, y, 'player');
                 this.player.setCollideWorldBounds(true);
                 this.player.setDrag(800);
-                this.player.setCircle(30);
                 
-                // Player properties
-                this.player.mageClass = this.selectedMage;
+                // Stats
+                this.player.mage = this.selectedMage;
                 this.player.maxHealth = this.selectedMage.health;
                 this.player.health = this.selectedMage.health;
                 this.player.energy = CONSTANTS.ENERGY_MAX;
                 this.player.overload = 0;
-                this.player.isStunned = false;
-                this.player.isDead = false;
-                this.player.speedMultiplier = 1;
+                this.player.speed = 1;
                 
-                // Skill cooldowns
-                this.player.cooldowns = {};
-                this.selectedMage.skills.forEach(skill => {
-                    this.player.cooldowns[skill.key] = 0;
-                });
-                this.player.cooldowns.ultimate = 0;
-                
-                // Visual - mage color tint
+                // Visual
                 this.player.setTint(this.selectedMage.color);
                 
-                // Aura effect
-                this.player.aura = this.add.image(startX, startY, 'aura');
-                this.player.aura.setTint(this.selectedMage.color);
-                this.player.aura.setAlpha(0.3);
-                
-                // Position history for Chrono rewind
-                this.player.positionHistory = [];
-                this.time.addEvent({
-                    delay: 100,
-                    callback: () => {
-                        if (this.player && this.player.active && !this.player.isDead) {
-                            this.player.positionHistory.push({
-                                x: this.player.x,
-                                y: this.player.y,
-                                health: this.player.health,
-                                timestamp: this.time.now
-                            });
-                            if (this.player.positionHistory.length > 30) {
-                                this.player.positionHistory.shift();
-                            }
-                        }
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
+                // Cooldowns
+                this.cooldowns = { q: 0, e: 0, r: 0, space: 0 };
             }
 
-            createEnemies() {
-                const enemyConfigs = {
-                    'duel': [{ type: 'AGGRESSIVE', count: 1 }],
-                    'arena': [
-                        { type: 'AGGRESSIVE', count: 2 },
-                        { type: 'TACTICAL', count: 2 },
-                        { type: 'SUPPORT', count: 1 }
-                    ],
-                    'survival': [{ type: 'AGGRESSIVE', count: 3 }],
-                    'boss': [{ type: 'BOSS', count: 1 }]
-                };
+            spawnEnemies() {
+                const count = this.gameMode === 'boss' ? 1 : (this.gameMode === 'survival' ? 3 + this.wave : 5);
                 
-                const config = enemyConfigs[this.gameMode] || enemyConfigs.duel;
-                
-                config.forEach(group => {
-                    for (let i = 0; i < group.count; i++) {
-                        this.spawnEnemy(group.type);
-                    }
-                });
-            }
-
-            spawnEnemy(type) {
-                const enemyType = ENEMY_TYPES[type];
-                const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-                const distance = Phaser.Math.Between(400, 600);
-                const x = this.player.x + Math.cos(angle) * distance;
-                const y = this.player.y + Math.sin(angle) * distance;
-                
-                const enemy = this.physics.add.sprite(x, y, `enemy_${enemyType.behavior}`);
-                enemy.setCircle(30);
-                enemy.enemyType = enemyType;
-                enemy.behavior = enemyType.behavior;
-                enemy.maxHealth = enemyType.health;
-                enemy.health = enemyType.health;
-                enemy.attackCooldown = 0;
-                enemy.isStunned = false;
-                enemy.isSilenced = false;
-                
-                // Boss specific
-                if (type === 'BOSS') {
-                    enemy.currentPhase = 0;
-                    enemy.phaseTriggered = [false, false, false];
+                for (let i = 0; i < count; i++) {
+                    this.spawnEnemy();
                 }
+            }
+
+            spawnEnemy() {
+                const isBoss = this.gameMode === 'boss';
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 400 + Math.random() * 200;
+                const x = this.player.x + Math.cos(angle) * dist;
+                const y = this.player.y + Math.sin(angle) * dist;
+
+                const enemy = this.physics.add.sprite(x, y, isBoss ? 'boss' : 'enemy');
+                enemy.setCircle(isBoss ? 35 : 30);
+                
+                enemy.isBoss = isBoss;
+                enemy.health = isBoss ? 500 : 80;
+                enemy.maxHealth = enemy.health;
+                enemy.speed = isBoss ? 100 : 150;
+                enemy.attackTimer = 0;
                 
                 this.enemies.add(enemy);
-                
-                // AI update
-                enemy.aiTimer = this.time.addEvent({
+
+                // Simple AI
+                this.time.addEvent({
                     delay: 500,
                     callback: () => this.updateEnemyAI(enemy),
                     callbackScope: this,
@@ -1200,1943 +557,815 @@
                 });
             }
 
-            spawnWave() {
-                this.waveNumber++;
-                const count = 2 + Math.floor(this.waveNumber / 2);
-                
-                for (let i = 0; i < count; i++) {
-                    const types = ['AGGRESSIVE', 'TACTICAL', 'SUPPORT'];
-                    const type = types[Phaser.Math.Between(0, types.length - 1)];
-                    this.spawnEnemy(type);
-                }
-                
-                // Wave announcement
-                this.showFloatingText(
-                    this.cameras.main.centerX,
-                    this.cameras.main.centerY - 100,
-                    `WAVE ${this.waveNumber}`,
-                    0xff0044,
-                    32
-                );
+            nextWave() {
+                this.wave++;
+                this.spawnEnemies();
+                this.showMessage(`WAVE ${this.wave}`, 0xff0044);
             }
 
             setupControls() {
-                // Virtual joystick - Movement
-                this.moveJoystick = {
-                    active: false,
-                    pointer: null,
-                    baseX: 100,
-                    baseY: this.cameras.main.height - 150,
-                    stickX: 100,
-                    stickY: this.cameras.main.height - 150,
-                    maxDistance: 50
-                };
+                // Virtual joysticks
+                this.joystickL = { active: false, baseX: 120, baseY: this.cameras.main.height - 120, x: 120, y: this.cameras.main.height - 120 };
+                this.joystickR = { active: false, baseX: this.cameras.main.width - 120, baseY: this.cameras.main.height - 120, x: this.cameras.main.width - 120, y: this.cameras.main.height - 120 };
+
+                // Visuals
+                this.joyLBase = this.add.image(this.joystickL.baseX, this.joystickL.baseY, 'joybase').setScrollFactor(0).setAlpha(0.4);
+                this.joyLStick = this.add.image(this.joystickL.x, this.joystickL.y, 'joystick').setScrollFactor(0).setAlpha(0.6);
                 
-                // Virtual joystick - Aim
-                this.aimJoystick = {
-                    active: false,
-                    pointer: null,
-                    baseX: this.cameras.main.width - 100,
-                    baseY: this.cameras.main.height - 150,
-                    stickX: this.cameras.main.width - 100,
-                    stickY: this.cameras.main.height - 150,
-                    maxDistance: 60
-                };
-                
-                // Create joystick visuals
-                this.moveBase = this.add.image(this.moveJoystick.baseX, this.moveJoystick.baseY, 'joystick_base')
-                    .setScrollFactor(0)
-                    .setAlpha(0.5);
-                this.moveStick = this.add.image(this.moveJoystick.stickX, this.moveJoystick.stickY, 'joystick_stick')
-                    .setScrollFactor(0)
-                    .setAlpha(0.7);
-                
-                this.aimBase = this.add.image(this.aimJoystick.baseX, this.aimJoystick.baseY, 'joystick_base')
-                    .setScrollFactor(0)
-                    .setAlpha(0.5);
-                this.aimStick = this.add.image(this.aimJoystick.stickX, this.aimJoystick.stickY, 'joystick_stick')
-                    .setScrollFactor(0)
-                    .setAlpha(0.7);
-                
-                // Input handling
+                this.joyRBase = this.add.image(this.joystickR.baseX, this.joystickR.baseY, 'joybase').setScrollFactor(0).setAlpha(0.4);
+                this.joyRStick = this.add.image(this.joystickR.x, this.joystickR.y, 'joystick').setScrollFactor(0).setAlpha(0.6);
+
+                // Touch input
                 this.input.on('pointerdown', (pointer) => {
                     if (pointer.x < this.cameras.main.width / 2) {
-                        this.moveJoystick.active = true;
-                        this.moveJoystick.pointer = pointer;
-                        this.moveJoystick.baseX = pointer.x;
-                        this.moveJoystick.baseY = pointer.y;
-                        this.moveBase.setPosition(pointer.x, pointer.y);
-                        this.moveStick.setPosition(pointer.x, pointer.y);
+                        this.joystickL.active = true;
+                        this.joystickL.pointer = pointer;
+                        this.updateJoystick(this.joystickL, pointer, this.joyLBase, this.joyLStick);
                     } else {
-                        this.aimJoystick.active = true;
-                        this.aimJoystick.pointer = pointer;
-                        this.aimJoystick.baseX = pointer.x;
-                        this.aimJoystick.baseY = pointer.y;
-                        this.aimBase.setPosition(pointer.x, pointer.y);
-                        this.aimStick.setPosition(pointer.x, pointer.y);
+                        this.joystickR.active = true;
+                        this.joystickR.pointer = pointer;
+                        this.updateJoystick(this.joystickR, pointer, this.joyRBase, this.joyRStick);
                     }
                 });
-                
+
                 this.input.on('pointermove', (pointer) => {
-                    if (this.moveJoystick.active && this.moveJoystick.pointer === pointer) {
-                        const dx = pointer.x - this.moveJoystick.baseX;
-                        const dy = pointer.y - this.moveJoystick.baseY;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const angle = Math.atan2(dy, dx);
-                        
-                        const clampedDistance = Math.min(distance, this.moveJoystick.maxDistance);
-                        this.moveJoystick.stickX = this.moveJoystick.baseX + Math.cos(angle) * clampedDistance;
-                        this.moveJoystick.stickY = this.moveJoystick.baseY + Math.sin(angle) * clampedDistance;
-                        this.moveStick.setPosition(this.moveJoystick.stickX, this.moveJoystick.stickY);
+                    if (this.joystickL.active && this.joystickL.pointer === pointer) {
+                        this.updateJoystick(this.joystickL, pointer, this.joyLBase, this.joyLStick);
                     }
-                    
-                    if (this.aimJoystick.active && this.aimJoystick.pointer === pointer) {
-                        const dx = pointer.x - this.aimJoystick.baseX;
-                        const dy = pointer.y - this.aimJoystick.baseY;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const angle = Math.atan2(dy, dx);
-                        
-                        const clampedDistance = Math.min(distance, this.aimJoystick.maxDistance);
-                        this.aimJoystick.stickX = this.aimJoystick.baseX + Math.cos(angle) * clampedDistance;
-                        this.aimJoystick.stickY = this.aimJoystick.baseY + Math.sin(angle) * clampedDistance;
-                        this.aimStick.setPosition(this.aimJoystick.stickX, this.aimJoystick.stickY);
+                    if (this.joystickR.active && this.joystickR.pointer === pointer) {
+                        this.updateJoystick(this.joystickR, pointer, this.joyRBase, this.joyRStick);
                     }
                 });
-                
+
                 this.input.on('pointerup', (pointer) => {
-                    if (this.moveJoystick.pointer === pointer) {
-                        this.moveJoystick.active = false;
-                        this.moveJoystick.pointer = null;
-                        this.moveBase.setPosition(100, this.cameras.main.height - 150);
-                        this.moveStick.setPosition(100, this.cameras.main.height - 150);
+                    if (this.joystickL.pointer === pointer) {
+                        this.joystickL.active = false;
+                        this.joyLBase.setPosition(120, this.cameras.main.height - 120);
+                        this.joyLStick.setPosition(120, this.cameras.main.height - 120);
                     }
-                    if (this.aimJoystick.pointer === pointer) {
-                        this.aimJoystick.active = false;
-                        this.aimJoystick.pointer = null;
-                        this.aimBase.setPosition(this.cameras.main.width - 100, this.cameras.main.height - 150);
-                        this.aimStick.setPosition(this.cameras.main.width - 100, this.cameras.main.height - 150);
+                    if (this.joystickR.pointer === pointer) {
+                        this.joystickR.active = false;
+                        this.joyRBase.setPosition(this.cameras.main.width - 120, this.cameras.main.height - 120);
+                        this.joyRStick.setPosition(this.cameras.main.width - 120, this.cameras.main.height - 120);
                     }
                 });
-                
-                // Skill buttons
-                this.createSkillButtons();
             }
 
-            createSkillButtons() {
-                const buttonY = this.cameras.main.height - 80;
-                const buttonSize = 60;
-                const spacing = 70;
-                const startX = this.cameras.main.width / 2 - spacing * 1.5;
-                
-                this.skillButtons = [];
-                
-                // Regular skills
-                this.selectedMage.skills.forEach((skill, index) => {
-                    const x = startX + index * spacing;
-                    const btn = this.createSkillButton(x, buttonY, skill, index + 1);
-                    this.skillButtons.push(btn);
-                });
-                
-                // Ultimate button
-                const ultX = startX + 3 * spacing + 20;
-                const ultBtn = this.createSkillButton(ultX, buttonY, this.selectedMage.ultimate, 'ULT', true);
-                this.skillButtons.push(ultBtn);
+            updateJoystick(joy, pointer, base, stick) {
+                const maxDist = 50;
+                const dx = pointer.x - joy.baseX;
+                const dy = pointer.y - joy.baseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const clamped = Math.min(dist, maxDist);
+                const angle = Math.atan2(dy, dx);
+
+                joy.x = joy.baseX + Math.cos(angle) * clamped;
+                joy.y = joy.baseY + Math.sin(angle) * clamped;
+                joy.dx = Math.cos(angle) * (clamped / maxDist);
+                joy.dy = Math.sin(angle) * (clamped / maxDist);
+
+                base.setPosition(joy.baseX, joy.baseY);
+                stick.setPosition(joy.x, joy.y);
             }
 
-            createSkillButton(x, y, skill, key, isUltimate = false) {
-                const container = this.add.container(x, y);
-                container.setScrollFactor(0);
-                
-                const size = isUltimate ? 70 : 60;
-                const bg = this.add.rectangle(0, 0, size, size, 0x1a1a3a)
-                    .setStrokeStyle(3, isUltimate ? 0xffd700 : this.selectedMage.color);
-                
-                const icon = this.add.image(0, 0, `skill_${this.selectedMage.id}`)
-                    .setDisplaySize(size - 10, size - 10);
-                
-                // Cooldown overlay
-                const cooldown = this.add.rectangle(0, 0, size, size, 0x000000, 0.7);
-                cooldown.visible = false;
-                
-                // Key label
-                const label = this.add.text(0, size/2 + 10, key.toString(), {
-                    fontFamily: 'Courier New',
-                    fontSize: '12px',
-                    color: '#ffffff'
-                }).setOrigin(0.5);
-                
-                container.add([bg, icon, cooldown, label]);
-                container.setSize(size, size);
-                container.setInteractive();
-                
-                container.on('pointerdown', () => {
-                    this.activateSkill(skill, isUltimate);
+            setupKeyboard() {
+                this.keys = this.input.keyboard.addKeys({
+                    w: Phaser.Input.Keyboard.KeyCodes.W,
+                    a: Phaser.Input.Keyboard.KeyCodes.A,
+                    s: Phaser.Input.Keyboard.KeyCodes.S,
+                    d: Phaser.Input.Keyboard.KeyCodes.D,
+                    q: Phaser.Input.Keyboard.KeyCodes.Q,
+                    e: Phaser.Input.Keyboard.KeyCodes.E,
+                    r: Phaser.Input.Keyboard.KeyCodes.R,
+                    space: Phaser.Input.Keyboard.KeyCodes.SPACE
                 });
-                
-                container.cooldownOverlay = cooldown;
-                container.skillData = skill;
-                container.isUltimate = isUltimate;
-                
-                return container;
+
+                // Mouse aim
+                this.input.on('pointermove', (pointer) => {
+                    if (this.player && this.player.active) {
+                        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+                        this.player.rotation = Phaser.Math.Angle.Between(
+                            this.player.x, this.player.y,
+                            worldPoint.x, worldPoint.y
+                        );
+                    }
+                });
+
+                // Click to shoot basic attack
+                this.input.on('pointerdown', (pointer) => {
+                    if (pointer.x > this.cameras.main.width / 2 && !this.joystickR.active) {
+                        this.basicAttack();
+                    }
+                });
             }
 
             createUI() {
-                // Health bar
-                this.healthBar = {
-                    bg: this.add.image(120, 40, 'bar_bg').setScrollFactor(0),
-                    fill: this.add.image(120, 40, 'bar_health').setScrollFactor(0)
-                };
+                // Health
+                this.add.image(120, 40, 'barbg').setScrollFactor(0);
+                this.healthFill = this.add.image(120, 40, 'healthbar').setScrollFactor(0);
+                this.add.text(20, 35, 'HP', { fontSize: '14px', color: '#fff' }).setScrollFactor(0);
+
+                // Energy
+                this.add.image(120, 70, 'barbg').setScrollFactor(0);
+                this.energyFill = this.add.image(120, 70, 'energybar').setScrollFactor(0);
+                this.overloadFill = this.add.image(120, 70, 'overloadbar').setScrollFactor(0).setAlpha(0);
+                this.add.text(20, 65, 'NRG', { fontSize: '14px', color: '#fff' }).setScrollFactor(0);
+
+                // Skill buttons
+                const skillY = this.cameras.main.height - 80;
+                const skills = this.selectedMage.skills;
                 
-                this.add.text(20, 35, 'HP', {
-                    fontFamily: 'Courier New',
-                    fontSize: '14px',
-                    color: '#ffffff'
-                }).setScrollFactor(0);
+                this.skillButtons = skills.map((skill, i) => {
+                    const x = this.cameras.main.width / 2 - 80 + i * 80;
+                    const btn = this.add.container(x, skillY);
+                    
+                    const bg = this.add.rectangle(0, 0, 70, 70, 0x1a1a3a)
+                        .setStrokeStyle(3, this.selectedMage.color);
+                    
+                    const icon = this.add.image(0, 0, `icon_${this.selectedMage.id}`).setDisplaySize(50, 50);
+                    const key = this.add.text(0, 45, ['Q', 'E', 'R'][i], { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+                    const cd = this.add.rectangle(0, 0, 70, 70, 0x000000, 0.7).setVisible(false);
+                    
+                    btn.add([bg, icon, key, cd]);
+                    btn.setScrollFactor(0);
+                    btn.cooldownOverlay = cd;
+                    
+                    // Click handler
+                    bg.setInteractive();
+                    bg.on('pointerdown', () => this.useSkill(i));
+                    
+                    return btn;
+                });
+
+                // Ultimate button
+                this.ultButton = this.add.container(this.cameras.main.width / 2 + 160, skillY);
+                const ultBg = this.add.rectangle(0, 0, 80, 80, 0xffd700)
+                    .setStrokeStyle(3, 0xffffff);
+                const ultIcon = this.add.image(0, 0, `icon_${this.selectedMage.id}`).setDisplaySize(60, 60);
+                const ultKey = this.add.text(0, 50, 'SPACE', { fontSize: '12px', color: '#000', fontStyle: 'bold' }).setOrigin(0.5);
+                this.ultCd = this.add.rectangle(0, 0, 80, 80, 0x000000, 0.7).setVisible(false);
                 
-                // Energy bar
-                this.energyBar = {
-                    bg: this.add.image(120, 70, 'bar_bg').setScrollFactor(0),
-                    fill: this.add.image(120, 70, 'bar_energy').setScrollFactor(0)
-                };
+                this.ultButton.add([ultBg, ultIcon, ultKey, this.ultCd]);
+                this.ultButton.setScrollFactor(0);
                 
-                this.add.text(20, 65, 'NRG', {
-                    fontFamily: 'Courier New',
-                    fontSize: '14px',
-                    color: '#ffffff'
-                }).setScrollFactor(0);
-                
-                // Overload bar (overlay)
-                this.overloadBar = this.add.image(120, 70, 'bar_overload')
-                    .setScrollFactor(0)
-                    .setAlpha(0);
-                
-                // Overload warning
-                this.overloadWarning = this.add.text(this.cameras.main.centerX, 120, 'WARNING: OVERLOAD CRITICAL', {
-                    fontFamily: 'Courier New',
-                    fontSize: '20px',
-                    color: '#ff0044',
-                    fontStyle: 'bold'
-                }).setOrigin(0.5).setScrollFactor(0).setVisible(false);
-                
-                // Timer
-                this.timerText = this.add.text(this.cameras.main.centerX, 20, '05:00', {
-                    fontFamily: 'Courier New',
-                    fontSize: '24px',
-                    color: '#00aaff'
-                }).setOrigin(0.5).setScrollFactor(0);
-                
-                // Score/Kills
-                this.scoreText = this.add.text(this.cameras.main.width - 20, 20, 'KILLS: 0', {
-                    fontFamily: 'Courier New',
-                    fontSize: '18px',
-                    color: '#ffffff'
+                ultBg.setInteractive();
+                ultBg.on('pointerdown', () => this.useUltimate());
+
+                // Score
+                this.scoreText = this.add.text(this.cameras.main.width - 20, 20, 'Kills: 0', {
+                    fontSize: '20px', color: '#fff'
                 }).setOrigin(1, 0).setScrollFactor(0);
-                
-                // Mage name
-                this.add.text(20, 100, this.selectedMage.name, {
-                    fontFamily: 'Courier New',
-                    fontSize: '14px',
-                    color: this.selectedMage.color
-                }).setScrollFactor(0);
-                
-                // FPS counter
-                this.fpsText = this.add.text(20, this.cameras.main.height - 20, 'FPS: 60', {
-                    fontFamily: 'Courier New',
-                    fontSize: '12px',
-                    color: '#666666'
-                }).setScrollFactor(0);
+
+                // Warning
+                this.warningText = this.add.text(this.cameras.main.centerX, 150, 'OVERLOAD WARNING!', {
+                    fontSize: '24px', color: '#ff0044', fontStyle: 'bold'
+                }).setOrigin(0.5).setScrollFactor(0).setVisible(false);
             }
 
             setupCollisions() {
-                // Player vs Walls
                 this.physics.add.collider(this.player, this.walls);
-                
-                // Enemies vs Walls
                 this.physics.add.collider(this.enemies, this.walls);
-                
-                // Projectiles vs Walls
-                this.physics.add.collider(this.projectiles, this.walls, (proj) => {
-                    this.createImpactEffect(proj.x, proj.y, proj.texture.key);
-                    proj.destroy();
-                });
-                
-                // Projectiles vs Enemies
-                this.physics.add.overlap(this.projectiles, this.enemies, (proj, enemy) => {
-                    if (proj.owner === 'player') {
-                        this.damageEnemy(enemy, proj.damage);
-                        this.createImpactEffect(enemy.x, enemy.y, proj.texture.key);
-                        proj.destroy();
+                this.physics.add.collider(this.bullets, this.walls, (bullet) => bullet.destroy());
+
+                this.physics.add.overlap(this.bullets, this.enemies, (bullet, enemy) => {
+                    if (bullet.owner === 'player') {
+                        this.damageEnemy(enemy, bullet.damage);
+                        bullet.destroy();
                     }
                 });
-                
-                // Enemy projectiles vs Player
-                this.physics.add.overlap(this.projectiles, this.player, (proj, player) => {
-                    if (proj.owner === 'enemy' && !player.isStunned) {
-                        this.damagePlayer(proj.damage);
-                        this.createImpactEffect(player.x, player.y, proj.texture.key);
-                        proj.destroy();
+
+                this.physics.add.overlap(this.bullets, this.player, (bullet, player) => {
+                    if (bullet.owner === 'enemy') {
+                        this.damagePlayer(bullet.damage);
+                        bullet.destroy();
                     }
                 });
-                
-                // Player vs Teleporters
-                this.physics.add.overlap(this.player, this.teleporters, (player, tele) => {
-                    // Find another teleporter
-                    const others = this.teleporters.getChildren().filter(t => t !== tele);
-                    if (others.length > 0 && !player.teleportCooldown) {
-                        const target = Phaser.Utils.Array.GetRandom(others);
-                        player.setPosition(target.x, target.y);
-                        player.teleportCooldown = true;
-                        
-                        this.time.delayedCall(3000, () => {
-                            if (player.active) player.teleportCooldown = false;
-                        });
-                        
-                        // Teleport effect
-                        this.createTeleportEffect(player.x, player.y);
-                    }
-                });
-                
-                // Player vs Hazards
-                this.physics.add.overlap(this.player, this.hazards, (player) => {
-                    if (!player.hazardDamageCooldown) {
+
+                this.physics.add.overlap(this.player, this.enemies, (player, enemy) => {
+                    if (!player.invulnerable) {
                         this.damagePlayer(10);
-                        player.hazardDamageCooldown = true;
-                        this.time.delayedCall(1000, () => {
-                            if (player.active) player.hazardDamageCooldown = false;
-                        });
+                        player.invulnerable = true;
+                        this.time.delayedCall(1000, () => player.invulnerable = false);
                     }
                 });
             }
 
             update(time, delta) {
-                if (this.player.isDead) return;
+                if (!this.player.active) return;
+
+                // Movement
+                this.handleMovement();
                 
-                // Update FPS
-                this.fpsText.setText(`FPS: ${Math.round(this.game.loop.actualFps)}`);
-                
-                // Player movement
-                this.updatePlayerMovement();
-                
-                // Update player rotation (aiming)
-                this.updatePlayerAim();
-                
-                // Update aura position
-                this.player.aura.setPosition(this.player.x, this.player.y);
-                
-                // Energy regeneration
-                this.regenerateEnergy(delta);
-                
-                // Update cooldowns
+                // Cooldowns
                 this.updateCooldowns(delta);
                 
-                // Update UI
+                // UI
                 this.updateUI();
                 
-                // Check overload
-                this.checkOverload();
-                
-                // Update effects
-                this.updateEffects();
-                
-                // Check win/lose conditions
-                this.checkGameState();
+                // Overload check
+                if (this.player.overload >= CONSTANTS.OVERLOAD_MAX && !this.player.stunned) {
+                    this.overloadExplode();
+                }
+
+                // Keyboard skills
+                if (Phaser.Input.Keyboard.JustDown(this.keys.q)) this.useSkill(0);
+                if (Phaser.Input.Keyboard.JustDown(this.keys.e)) this.useSkill(1);
+                if (Phaser.Input.Keyboard.JustDown(this.keys.r)) this.useSkill(2);
+                if (Phaser.Input.Keyboard.JustDown(this.keys.space)) this.useUltimate();
             }
 
-            updatePlayerMovement() {
-                if (this.player.isStunned) {
+            handleMovement() {
+                let vx = 0, vy = 0;
+
+                // Joystick
+                if (this.joystickL.active) {
+                    vx = this.joystickL.dx * CONSTANTS.PLAYER_SPEED;
+                    vy = this.joystickL.dy * CONSTANTS.PLAYER_SPEED;
+                }
+
+                // Keyboard
+                if (this.keys.w.isDown) vy = -CONSTANTS.PLAYER_SPEED;
+                if (this.keys.s.isDown) vy = CONSTANTS.PLAYER_SPEED;
+                if (this.keys.a.isDown) vx = -CONSTANTS.PLAYER_SPEED;
+                if (this.keys.d.isDown) vx = CONSTANTS.PLAYER_SPEED;
+
+                // Apply
+                if (this.player.stunned) {
                     this.player.setVelocity(0);
-                    return;
+                } else {
+                    this.player.setVelocity(vx * this.player.speed, vy * this.player.speed);
                 }
-                
-                let vx = 0;
-                let vy = 0;
-                
-                if (this.moveJoystick.active) {
-                    const dx = this.moveJoystick.stickX - this.moveJoystick.baseX;
-                    const dy = this.moveJoystick.stickY - this.moveJoystick.baseY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance > 10) {
-                        const normalizedX = dx / distance;
-                        const normalizedY = dy / distance;
-                        const speed = CONSTANTS.PLAYER_SPEED * this.player.speedMultiplier * (distance / this.moveJoystick.maxDistance);
-                        
-                        vx = normalizedX * speed;
-                        vy = normalizedY * speed;
-                    }
-                }
-                
-                this.player.setVelocity(vx, vy);
-                
-                // Passive: Static Charge for Cyber Lightning
-                if (this.selectedMage.id === 'cyber_lightning' && (vx !== 0 || vy !== 0)) {
-                    if (!this.player.staticCharge) this.player.staticCharge = 0;
-                    this.player.staticCharge = Math.min(this.player.staticCharge + 0.1, 100);
+
+                // Aim with right joystick
+                if (this.joystickR.active) {
+                    this.player.rotation = Math.atan2(this.joystickR.dy, this.joystickR.dx);
                 }
             }
 
-            updatePlayerAim() {
-                if (this.aimJoystick.active) {
-                    const dx = this.aimJoystick.stickX - this.aimJoystick.baseX;
-                    const dy = this.aimJoystick.stickY - this.aimJoystick.baseY;
-                    
-                    if (Math.sqrt(dx * dx + dy * dy) > 10) {
-                        const angle = Math.atan2(dy, dx);
-                        this.player.setRotation(angle);
-                    }
-                }
-            }
-
-            regenerateEnergy(delta) {
-                const regen = (this.selectedMage.energyRegen * delta) / 1000;
-                this.player.energy = Math.min(this.player.energy + regen, CONSTANTS.ENERGY_MAX);
+            basicAttack() {
+                if (this.player.energy < 5) return;
                 
-                // Passive: Temporal Flow for Chrono
-                if (this.selectedMage.id === 'chrono') {
-                    // Already handled in cooldown reduction
-                }
-            }
-
-            updateCooldowns(delta) {
-                const timeScale = this.selectedMage.id === 'chrono' ? 1.2 : 1;
+                this.player.energy -= 5;
+                this.player.overload += 2;
                 
-                Object.keys(this.player.cooldowns).forEach(key => {
-                    if (this.player.cooldowns[key] > 0) {
-                        this.player.cooldowns[key] -= delta * timeScale;
-                        if (this.player.cooldowns[key] < 0) this.player.cooldowns[key] = 0;
-                    }
-                });
-                
-                // Update button visuals
-                this.skillButtons.forEach(btn => {
-                    const skill = btn.skillData;
-                    const key = btn.isUltimate ? 'ultimate' : skill.key;
-                    const remaining = this.player.cooldowns[key];
-                    const maxCooldown = btn.isUltimate ? skill.cooldown : skill.cooldown;
-                    
-                    if (remaining > 0) {
-                        btn.cooldownOverlay.visible = true;
-                        const scale = remaining / maxCooldown;
-                        btn.cooldownOverlay.setScale(1, scale);
-                        btn.cooldownOverlay.y = (1 - scale) * -30;
-                    } else {
-                        btn.cooldownOverlay.visible = false;
-                    }
-                });
-            }
-
-            updateUI() {
-                // Health bar
-                const healthPercent = this.player.health / this.player.maxHealth;
-                this.healthBar.fill.setScale(healthPercent, 1);
-                this.healthBar.fill.setTint(healthPercent > 0.5 ? 0x00ff44 : 0xff0044);
-                
-                // Energy bar
-                const energyPercent = this.player.energy / CONSTANTS.ENERGY_MAX;
-                this.energyBar.fill.setScale(energyPercent, 1);
-                
-                // Overload bar overlay
-                const overloadPercent = this.player.overload / CONSTANTS.OVERLOAD_MAX;
-                this.overloadBar.setAlpha(overloadPercent > 0 ? 0.7 : 0);
-                this.overloadBar.setScale(Math.min(overloadPercent, 1), 1);
-                
-                // Warning
-                this.overloadWarning.setVisible(this.player.overload > CONSTANTS.OVERLOAD_THRESHOLD);
-                
-                // Score
-                this.scoreText.setText(`KILLS: ${this.score}`);
-            }
-
-            checkOverload() {
-                if (this.player.overload >= CONSTANTS.OVERLOAD_MAX && !this.player.overloadStunned) {
-                    // Overload stun
-                    this.player.overloadStunned = true;
-                    this.player.isStunned = true;
-                    this.player.overload = CONSTANTS.OVERLOAD_MAX * 0.5; // Reset to 50%
-                    
-                    // Self damage
-                    this.damagePlayer(15);
-                    
-                    // Visual feedback
-                    this.cameras.main.shake(500, 0.02);
-                    this.showFloatingText(this.player.x, this.player.y - 50, 'OVERLOAD!', 0xff0044, 24);
-                    
-                    // Stun duration
-                    this.time.delayedCall(CONSTANTS.STUN_DURATION, () => {
-                        if (this.player.active) {
-                            this.player.isStunned = false;
-                            this.player.overloadStunned = false;
-                        }
-                    });
-                }
-            }
-
-            activateSkill(skill, isUltimate) {
-                if (this.player.isDead || this.player.isStunned) return;
-                
-                const key = isUltimate ? 'ultimate' : skill.key;
-                
-                // Check cooldown
-                if (this.player.cooldowns[key] > 0) return;
-                
-                // Check energy
-                if (this.player.energy < skill.energyCost) {
-                    this.showFloatingText(this.player.x, this.player.y - 30, 'NO ENERGY!', 0xffaa00, 16);
-                    return;
-                }
-                
-                // Check silence (EMP)
-                if (this.player.isSilenced && !isUltimate) {
-                    this.showFloatingText(this.player.x, this.player.y - 30, 'SILENCED!', 0xff0044, 16);
-                    return;
-                }
-                
-                // Consume energy
-                this.player.energy -= skill.energyCost;
-                
-                // Add overload
-                const overloadGain = isUltimate ? 30 : 15;
-                this.player.overload = Math.min(this.player.overload + overloadGain, CONSTANTS.OVERLOAD_MAX);
-                
-                // Set cooldown
-                this.player.cooldowns[key] = skill.cooldown;
-                
-                // Execute skill
-                this.executeSkill(skill, isUltimate);
-            }
-
-            executeSkill(skill, isUltimate) {
                 const angle = this.player.rotation;
-                const vx = Math.cos(angle);
-                const vy = Math.sin(angle);
+                const bullet = this.bullets.create(
+                    this.player.x + Math.cos(angle) * 40,
+                    this.player.y + Math.sin(angle) * 40,
+                    'bullet'
+                );
                 
-                // Damage boost from overload
-                const damageMult = this.player.overload > CONSTANTS.OVERLOAD_THRESHOLD ? 
-                    CONSTANTS.DAMAGE_BOOST_AT_OVERLOAD : 1;
+                bullet.setVelocity(Math.cos(angle) * 500, Math.sin(angle) * 500);
+                bullet.setTint(this.player.mage.color);
+                bullet.damage = 10;
+                bullet.owner = 'player';
                 
-                // Passive: Static Charge damage boost
-                if (this.selectedMage.id === 'cyber_lightning' && this.player.staticCharge >= 100) {
-                    damageMult *= 1.25;
-                    this.player.staticCharge = 0;
-                    this.showFloatingText(this.player.x, this.player.y - 60, 'MAX CHARGE!', 0x00ffff, 16);
-                }
+                this.time.delayedCall(1000, () => bullet.destroy());
+            }
+
+            useSkill(index) {
+                const keys = ['q', 'e', 'r'];
+                const key = keys[index];
                 
-                switch(this.selectedMage.id) {
+                if (this.cooldowns[key] > 0 || this.player.energy < 20) return;
+                
+                this.cooldowns[key] = 3000;
+                this.player.energy -= 20;
+                this.player.overload += 15;
+                
+                // Execute skill based on mage
+                this.executeSkill(index);
+            }
+
+            useUltimate() {
+                if (this.cooldowns.space > 0 || this.player.energy < 50) return;
+                
+                this.cooldowns.space = 15000;
+                this.player.energy -= 50;
+                this.player.overload += 30;
+                
+                this.executeUltimate();
+            }
+
+            executeSkill(index) {
+                const angle = this.player.rotation;
+                const mage = this.player.mage.id;
+                
+                // Visual effect
+                this.createExplosion(this.player.x, this.player.y, 50, this.player.mage.color);
+                
+                switch(mage) {
                     case 'void':
-                        this.executeVoidSkill(skill, vx, vy, damageMult, isUltimate);
+                        if (index === 0) this.createGravityWell();
+                        if (index === 1) this.shootVoidOrb();
+                        if (index === 2) this.createShield();
                         break;
-                    case 'tech_flame':
-                        this.executeFlameSkill(skill, vx, vy, damageMult, isUltimate);
+                    case 'flame':
+                        if (index === 0) this.fireBeam();
+                        if (index === 1) this.fireball();
+                        if (index === 2) this.dash();
                         break;
-                    case 'cyber_lightning':
-                        this.executeLightningSkill(skill, vx, vy, damageMult, isUltimate);
+                    case 'lightning':
+                        if (index === 0) this.chainLightning();
+                        if (index === 1) this.teleport();
+                        if (index === 2) this.thunderStrike();
                         break;
                     case 'chrono':
-                        this.executeChronoSkill(skill, vx, vy, damageMult, isUltimate);
+                        if (index === 0) this.slowField();
+                        if (index === 1) this.rewind();
+                        if (index === 2) this.speedBoost();
                         break;
                     case 'nano':
-                        this.executeNanoSkill(skill, vx, vy, damageMult, isUltimate);
+                        if (index === 0) this.heal();
+                        if (index === 1) this.summonDrone();
+                        if (index === 2) this.barrier();
                         break;
                 }
-                
-                // Visual feedback
-                this.createSkillCastEffect();
             }
 
-            executeVoidSkill(skill, vx, vy, damageMult, isUltimate) {
-                if (isUltimate) {
-                    // Space Collapse - Area implosion
-                    this.createGravityWell(this.player.x, this.player.y, 300, 3000, true);
-                    this.cameras.main.shake(800, 0.03);
-                    
-                    // Stun all enemies
+            executeUltimate() {
+                this.cameras.main.shake(500, 0.02);
+                this.createExplosion(this.player.x, this.player.y, 200, 0xffffff);
+                
+                const mage = this.player.mage.id;
+                
+                if (mage === 'void') {
+                    // Black hole - pull all enemies
                     this.enemies.getChildren().forEach(enemy => {
                         const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
                         if (dist < 300) {
-                            this.stunEnemy(enemy, 2000);
-                            this.damageEnemy(enemy, skill.damage * damageMult);
+                            this.damageEnemy(enemy, 100);
+                            enemy.stunned = true;
+                            this.time.delayedCall(2000, () => enemy.stunned = false);
                         }
                     });
-                } else if (skill.name === 'Gravity Well') {
-                    const targetX = this.player.x + vx * 200;
-                    const targetY = this.player.y + vy * 200;
-                    this.createGravityWell(targetX, targetY, 150, skill.duration, false);
-                } else if (skill.name === 'Singularity') {
-                    this.fireProjectile('proj_void', vx, vy, 300, skill.damage * damageMult, 2000, true);
-                } else if (skill.name === 'Void Shield') {
-                    this.createVoidShield();
-                }
-            }
-
-            executeFlameSkill(skill, vx, vy, damageMult, isUltimate) {
-                if (isUltimate) {
-                    // Solar Detonation
-                    this.createExplosion(this.player.x, this.player.y, 250, skill.damage * damageMult, 0xff4400);
-                    this.cameras.main.shake(500, 0.04);
-                } else if (skill.name === 'Plasma Stream') {
-                    this.createBeam(vx, vy, skill.damage * damageMult, 0xff4400, skill.duration);
-                } else if (skill.name === 'Heat Wave') {
-                    this.createRadialBurst(skill.damage * damageMult, 0xff4400);
-                } else if (skill.name === 'Inferno Dash') {
-                    this.player.setVelocity(vx * CONSTANTS.DASH_SPEED, vy * CONSTANTS.DASH_SPEED);
-                    this.createFireTrail();
-                }
-            }
-
-            executeLightningSkill(skill, vx, vy, damageMult, isUltimate) {
-                if (isUltimate) {
-                    // EMP Storm
-                    this.createEMPStorm(skill.duration, skill.radius);
+                } else if (mage === 'flame') {
+                    // Supernova
                     this.enemies.getChildren().forEach(enemy => {
                         const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
-                        if (dist < skill.radius) {
-                            this.silenceEnemy(enemy, skill.disableDuration);
-                            this.damageEnemy(enemy, skill.damage * damageMult);
-                        }
+                        if (dist < 250) this.damageEnemy(enemy, 150);
                     });
-                } else if (skill.name === 'Chain Lightning') {
-                    this.fireChainLightning(skill.damage * damageMult, skill.bounces);
-                } else if (skill.name === 'Flash Step') {
-                    const targetX = this.player.x + vx * skill.range;
-                    const targetY = this.player.y + vy * skill.range;
-                    this.createTeleportEffect(this.player.x, this.player.y);
-                    this.player.setPosition(targetX, targetY);
-                    this.createTeleportEffect(targetX, targetY);
-                    
-                    // Damage at departure and arrival
-                    this.createRadialBurst(20, 0x00ffff, 100);
-                } else if (skill.name === 'Thunder Strike') {
-                    const targetX = this.player.x + vx * 300;
-                    const targetY = this.player.y + vy * 300;
-                    this.createDelayedStrike(targetX, targetY, skill.damage * damageMult, skill.delay);
-                }
-            }
-
-            executeChronoSkill(skill, vx, vy, damageMult, isUltimate) {
-                if (isUltimate) {
-                    // Time Freeze
-                    this.createTimeFreeze(skill.duration, skill.radius);
+                } else if (mage === 'lightning') {
+                    // EMP
                     this.enemies.getChildren().forEach(enemy => {
-                        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
-                        if (dist < skill.radius) {
-                            this.stunEnemy(enemy, skill.duration);
-                            this.createClockEffect(enemy.x, enemy.y);
-                        }
+                        enemy.stunned = true;
+                        this.damageEnemy(enemy, 80);
+                        this.time.delayedCall(3000, () => enemy.stunned = false);
                     });
-                } else if (skill.name === 'Time Rift') {
-                    const targetX = this.player.x + vx * 250;
-                    const targetY = this.player.y + vy * 250;
-                    this.createTimeRift(targetX, targetY, skill.duration, skill.slowAmount);
-                } else if (skill.name === 'Rewind') {
-                    // Find position 3 seconds ago
-                    const history = this.player.positionHistory;
-                    if (history.length > 0) {
-                        const oldPos = history[0];
-                        this.createRewindEffect();
-                        this.player.setPosition(oldPos.x, oldPos.y);
-                        this.healPlayer(this.player.maxHealth * skill.healPercent);
-                    }
-                } else if (skill.name === 'Accelerate') {
-                    this.player.speedMultiplier = skill.speedBoost;
-                    this.createHasteEffect();
-                    this.time.delayedCall(skill.duration, () => {
-                        if (this.player.active) this.player.speedMultiplier = 1;
-                    });
-                }
-            }
-
-            executeNanoSkill(skill, vx, vy, damageMult, isUltimate) {
-                if (isUltimate) {
-                    // Regeneration Dome
-                    this.createRegenDome(skill.duration, skill.radius, skill.healPerSecond);
-                } else if (skill.name === 'Repair Swarm') {
-                    // Heal self or find ally
-                    this.healPlayer(skill.heal);
-                    this.createHealEffect(this.player.x, this.player.y);
-                } else if (skill.name === 'Construct') {
-                    this.summonConstruct(skill.duration, skill.health);
-                } else if (skill.name === 'Nano Shield') {
-                    this.createNanoShield(skill.duration, skill.damageReduction);
-                }
-            }
-
-            // Skill effect creators
-            createGravityWell(x, y, radius, duration, isUltimate) {
-                const well = this.add.circle(x, y, radius, 0x9d00ff, 0.3);
-                well.setStrokeStyle(2, 0x9d00ff);
-                
-                // Pull effect
-                const pullTimer = this.time.addEvent({
-                    delay: 100,
-                    callback: () => {
-                        if (!well.active) return;
-                        this.enemies.getChildren().forEach(enemy => {
-                            const dist = Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y);
-                            if (dist < radius && !enemy.isStunned) {
-                                const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, x, y);
-                                const force = isUltimate ? 150 : 80;
-                                enemy.body.velocity.x += Math.cos(angle) * force * 0.1;
-                                enemy.body.velocity.y += Math.sin(angle) * force * 0.1;
-                            }
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                // Spin animation
-                this.tweens.add({
-                    targets: well,
-                    rotation: Math.PI * 2,
-                    duration: 3000,
-                    repeat: -1
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    well.destroy();
-                    pullTimer.remove();
-                    
-                    if (isUltimate) {
-                        // Implosion damage
-                        this.createExplosion(x, y, radius, 50, 0x9d00ff);
-                    }
-                });
-                
-                this.effects.add(well);
-            }
-
-            createBeam(vx, vy, damage, color, duration) {
-                const beamLength = 400;
-                const beam = this.add.rectangle(
-                    this.player.x + vx * beamLength/2,
-                    this.player.y + vy * beamLength/2,
-                    beamLength, 20, color, 0.7
-                );
-                beam.setRotation(Math.atan2(vy, vx));
-                
-                // Damage over time
-                const damageTimer = this.time.addEvent({
-                    delay: 200,
-                    callback: () => {
-                        if (!beam.active) return;
-                        const beamEndX = this.player.x + vx * beamLength;
-                        const beamEndY = this.player.y + vy * beamLength;
-                        
-                        this.enemies.getChildren().forEach(enemy => {
-                            const dist = Phaser.Math.Distance.Between(
-                                this.player.x, this.player.y, enemy.x, enemy.y
-                            );
-                            const angle = Phaser.Math.Angle.Between(
-                                this.player.x, this.player.y, enemy.x, enemy.y
-                            );
-                            const angleDiff = Math.abs(angle - Math.atan2(vy, vx));
-                            
-                            if (dist < beamLength && angleDiff < 0.2) {
-                                this.damageEnemy(enemy, damage * 0.3);
-                            }
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    beam.destroy();
-                    damageTimer.remove();
-                });
-                
-                this.effects.add(beam);
-            }
-
-            createRadialBurst(damage, color, radius = 150) {
-                const burst = this.add.circle(this.player.x, this.player.y, 10, color, 0.6);
-                
-                this.tweens.add({
-                    targets: burst,
-                    radius: radius,
-                    alpha: 0,
-                    duration: 300,
-                    onUpdate: () => {
-                        this.enemies.getChildren().forEach(enemy => {
-                            const dist = Phaser.Math.Distance.Between(
-                                this.player.x, this.player.y, enemy.x, enemy.y
-                            );
-                            if (dist < burst.radius && !enemy.hitByBurst) {
-                                enemy.hitByBurst = true;
-                                this.damageEnemy(enemy, damage);
-                                this.time.delayedCall(300, () => {
-                                    if (enemy.active) enemy.hitByBurst = false;
-                                });
-                            }
-                        });
-                    },
-                    onComplete: () => burst.destroy()
-                });
-            }
-
-            createFireTrail() {
-                const trail = this.time.addEvent({
-                    delay: 100,
-                    callback: () => {
-                        if (!this.player.active) {
-                            trail.remove();
-                            return;
-                        }
-                        const fire = this.add.circle(this.player.x, this.player.y, 30, 0xff4400, 0.5);
-                        this.tweens.add({
-                            targets: fire,
-                            alpha: 0,
-                            scale: 0,
-                            duration: 1000,
-                            onComplete: () => fire.destroy()
-                        });
-                        
-                        // Damage enemies on trail
-                        this.enemies.getChildren().forEach(enemy => {
-                            const dist = Phaser.Math.Distance.Between(
-                                this.player.x, this.player.y, enemy.x, enemy.y
-                            );
-                            if (dist < 40) {
-                                this.damageEnemy(enemy, 10);
-                            }
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true,
-                    repeat: 10
-                });
-            }
-
-            fireProjectile(texture, vx, vy, speed, damage, duration, homing = false) {
-                const proj = this.physics.add.sprite(
-                    this.player.x + vx * 40,
-                    this.player.y + vy * 40,
-                    texture
-                );
-                proj.setVelocity(vx * speed, vy * speed);
-                proj.damage = damage;
-                proj.owner = 'player';
-                proj.homing = homing;
-                
-                if (homing) {
-                    // Find nearest enemy
-                    let nearest = null;
-                    let minDist = Infinity;
+                } else if (mage === 'chrono') {
+                    // Time stop
                     this.enemies.getChildren().forEach(enemy => {
-                        const dist = Phaser.Math.Distance.Between(
-                            this.player.x, this.player.y, enemy.x, enemy.y
-                        );
-                        if (dist < minDist) {
-                            minDist = dist;
-                            nearest = enemy;
-                        }
+                        enemy.stunned = true;
+                        this.time.delayedCall(3000, () => enemy.stunned = false);
                     });
-                    proj.target = nearest;
-                }
-                
-                this.projectiles.add(proj);
-                
-                // Homing update
-                if (homing && proj.target) {
-                    const homingTimer = this.time.addEvent({
-                        delay: 50,
-                        callback: () => {
-                            if (!proj.active || !proj.target || !proj.target.active) {
-                                homingTimer.remove();
-                                return;
-                            }
-                            const angle = Phaser.Math.Angle.Between(
-                                proj.x, proj.y, proj.target.x, proj.target.y
-                            );
-                            proj.body.velocity.x = Math.cos(angle) * speed;
-                            proj.body.velocity.y = Math.sin(angle) * speed;
-                            proj.setRotation(angle);
-                        },
-                        callbackScope: this,
-                        loop: true
+                } else if (mage === 'nano') {
+                    // Healing zone
+                    this.heal(50);
+                    this.time.addEvent({
+                        delay: 500,
+                        repeat: 5,
+                        callback: () => this.heal(20)
                     });
                 }
-                
-                this.time.delayedCall(duration, () => {
-                    if (proj.active) proj.destroy();
-                });
             }
 
-            fireChainLightning(damage, maxBounces) {
-                const enemies = this.enemies.getChildren();
-                if (enemies.length === 0) return;
+            // Skill implementations
+            createGravityWell() {
+                const well = this.add.circle(this.player.x, this.player.y, 100, 0x9d00ff, 0.3);
+                this.tweens.add({ targets: well, scale: 2, alpha: 0, duration: 2000, onComplete: () => well.destroy() });
                 
-                // Find nearest enemy
-                let current = enemies.reduce((nearest, enemy) => {
+                this.enemies.getChildren().forEach(enemy => {
                     const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
-                    return dist < nearest.dist ? { enemy, dist } : nearest;
-                }, { enemy: null, dist: Infinity }).enemy;
-                
-                if (!current) return;
-                
-                let bounces = 0;
-                let lastPos = { x: this.player.x, y: this.player.y };
-                const hitEnemies = new Set();
-                
-                while (current && bounces < maxBounces) {
-                    if (hitEnemies.has(current)) break;
-                    
-                    hitEnemies.add(current);
-                    this.damageEnemy(current, damage);
-                    
-                    // Visual lightning
-                    this.createLightningBolt(lastPos.x, lastPos.y, current.x, current.y);
-                    
-                    // Find next target
-                    lastPos = { x: current.x, y: current.y };
-                    const next = enemies.find(e => !hitEnemies.has(e) && 
-                        Phaser.Math.Distance.Between(current.x, current.y, e.x, e.y) < 300);
-                    
-                    current = next;
-                    bounces++;
-                }
+                    if (dist < 200) {
+                        const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
+                        enemy.body.velocity.x += Math.cos(angle) * 200;
+                        enemy.body.velocity.y += Math.sin(angle) * 200;
+                    }
+                });
             }
 
-            createLightningBolt(x1, y1, x2, y2) {
+            shootVoidOrb() {
+                const angle = this.player.rotation;
+                const orb = this.bullets.create(
+                    this.player.x + Math.cos(angle) * 40,
+                    this.player.y + Math.sin(angle) * 40,
+                    'bullet'
+                );
+                orb.setTint(0x9d00ff);
+                orb.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                orb.damage = 40;
+                orb.owner = 'player';
+                this.time.delayedCall(2000, () => orb.destroy());
+            }
+
+            createShield() {
+                const shield = this.add.circle(this.player.x, this.player.y, 60, 0x9d00ff, 0.3);
+                this.player.shield = true;
+                this.time.delayedCall(3000, () => {
+                    shield.destroy();
+                    this.player.shield = false;
+                });
+            }
+
+            fireBeam() {
+                const beam = this.add.rectangle(
+                    this.player.x + Math.cos(this.player.rotation) * 200,
+                    this.player.y + Math.sin(this.player.rotation) * 200,
+                    400, 30, 0xff4400, 0.5
+                );
+                beam.setRotation(this.player.rotation);
+                
+                this.enemies.getChildren().forEach(enemy => {
+                    const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
+                    if (dist < 400) this.damageEnemy(enemy, 5);
+                });
+                
+                this.time.delayedCall(1000, () => beam.destroy());
+            }
+
+            fireball() {
+                const angle = this.player.rotation;
+                const ball = this.bullets.create(
+                    this.player.x + Math.cos(angle) * 40,
+                    this.player.y + Math.sin(angle) * 40,
+                    'bullet'
+                );
+                ball.setTint(0xff4400);
+                ball.setScale(2);
+                ball.setVelocity(Math.cos(angle) * 400, Math.sin(angle) * 400);
+                ball.damage = 50;
+                ball.owner = 'player';
+                
+                ball.explode = true;
+                this.time.delayedCall(1500, () => {
+                    if (ball.active) {
+                        this.createExplosion(ball.x, ball.y, 100, 0xff4400);
+                        ball.destroy();
+                    }
+                });
+            }
+
+            dash() {
+                const angle = this.player.rotation;
+                this.player.setVelocity(Math.cos(angle) * 800, Math.sin(angle) * 800);
+                this.player.invulnerable = true;
+                this.time.delayedCall(300, () => {
+                    this.player.invulnerable = false;
+                    this.player.setVelocity(0);
+                });
+            }
+
+            chainLightning() {
+                let targets = this.enemies.getChildren()
+                    .sort((a, b) => {
+                        const da = Phaser.Math.Distance.Between(this.player.x, this.player.y, a.x, a.y);
+                        const db = Phaser.Math.Distance.Between(this.player.x, this.player.y, b.x, b.y);
+                        return da - db;
+                    })
+                    .slice(0, 3);
+                
+                let lastX = this.player.x, lastY = this.player.y;
+                targets.forEach(target => {
+                    this.createLightning(lastX, lastY, target.x, target.y);
+                    this.damageEnemy(target, 30);
+                    lastX = target.x;
+                    lastY = target.y;
+                });
+            }
+
+            teleport() {
+                const angle = this.player.rotation;
+                this.createExplosion(this.player.x, this.player.y, 50, 0x00ffff);
+                this.player.x += Math.cos(angle) * 200;
+                this.player.y += Math.sin(angle) * 200;
+                this.createExplosion(this.player.x, this.player.y, 50, 0x00ffff);
+            }
+
+            thunderStrike() {
+                const angle = this.player.rotation;
+                const targetX = this.player.x + Math.cos(angle) * 300;
+                const targetY = this.player.y + Math.sin(angle) * 300;
+                
+                const marker = this.add.circle(targetX, targetY, 40, 0x00ffff, 0.3);
+                this.time.delayedCall(500, () => {
+                    marker.destroy();
+                    this.createExplosion(targetX, targetY, 80, 0x00ffff);
+                    this.enemies.getChildren().forEach(enemy => {
+                        if (Phaser.Math.Distance.Between(targetX, targetY, enemy.x, enemy.y) < 80) {
+                            this.damageEnemy(enemy, 60);
+                        }
+                    });
+                });
+            }
+
+            slowField() {
+                const field = this.add.circle(this.player.x, this.player.y, 150, 0xffd700, 0.2);
+                this.enemies.getChildren().forEach(enemy => {
+                    enemy.slowed = true;
+                    enemy.speed = 0.5;
+                });
+                this.time.delayedCall(4000, () => {
+                    field.destroy();
+                    this.enemies.getChildren().forEach(enemy => {
+                        enemy.slowed = false;
+                        enemy.speed = 1;
+                    });
+                });
+            }
+
+            rewind() {
+                this.heal(30);
+                this.createExplosion(this.player.x, this.player.y, 100, 0xffd700);
+            }
+
+            speedBoost() {
+                this.player.speed = 1.5;
+                this.time.delayedCall(3000, () => this.player.speed = 1);
+            }
+
+            heal(amount = 30) {
+                this.player.health = Math.min(this.player.health + amount, this.player.maxHealth);
+                this.showFloatingText(this.player.x, this.player.y - 50, `+${amount}`, 0x00ff88);
+            }
+
+            summonDrone() {
+                const drone = this.physics.add.sprite(this.player.x + 50, this.player.y, 'enemy');
+                drone.setTint(0x00ff88);
+                drone.setScale(0.7);
+                drone.drone = true;
+                drone.health = 50;
+                
+                this.time.addEvent({
+                    delay: 1000,
+                    callback: () => {
+                        if (!drone.active) return;
+                        const target = this.getNearestEnemy(drone);
+                        if (target) {
+                            const angle = Phaser.Math.Angle.Between(drone.x, drone.y, target.x, target.y);
+                            const bullet = this.bullets.create(drone.x, drone.y, 'bullet');
+                            bullet.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                            bullet.damage = 15;
+                            bullet.owner = 'player';
+                            this.time.delayedCall(1000, () => bullet.destroy());
+                        }
+                    },
+                    repeat: 4
+                });
+                
+                this.time.delayedCall(5000, () => drone.destroy());
+            }
+
+            barrier() {
+                this.player.shield = true;
+                this.time.delayedCall(4000, () => this.player.shield = false);
+            }
+
+            // Helper functions
+            createExplosion(x, y, size, color) {
+                const exp = this.add.circle(x, y, 10, color, 0.8);
+                this.tweens.add({
+                    targets: exp,
+                    radius: size,
+                    alpha: 0,
+                    duration: 400,
+                    onComplete: () => exp.destroy()
+                });
+            }
+
+            createLightning(x1, y1, x2, y2) {
                 const graphics = this.add.graphics();
-                graphics.lineStyle(3, 0x00ffff, 1);
-                
-                const segments = 5;
-                let currentX = x1;
-                let currentY = y1;
-                
+                graphics.lineStyle(3, 0x00ffff);
                 graphics.beginPath();
                 graphics.moveTo(x1, y1);
                 
+                const segments = 5;
                 for (let i = 1; i < segments; i++) {
                     const t = i / segments;
-                    const targetX = x1 + (x2 - x1) * t;
-                    const targetY = y1 + (y2 - y1) * t;
-                    const offset = (Math.random() - 0.5) * 30;
-                    currentX = targetX + offset;
-                    currentY = targetY + offset;
-                    graphics.lineTo(currentX, currentY);
+                    const mx = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 30;
+                    const my = y1 + (y2 - y1) * t + (Math.random() - 0.5) * 30;
+                    graphics.lineTo(mx, my);
                 }
-                
                 graphics.lineTo(x2, y2);
                 graphics.strokePath();
                 
-                this.tweens.add({
-                    targets: graphics,
-                    alpha: 0,
-                    duration: 200,
-                    onComplete: () => graphics.destroy()
-                });
+                this.time.delayedCall(200, () => graphics.destroy());
             }
 
-            createDelayedStrike(x, y, damage, delay) {
-                const marker = this.add.circle(x, y, 40, 0x00ffff, 0.3);
-                marker.setStrokeStyle(2, 0x00ffff);
-                
-                // Countdown
-                const text = this.add.text(x, y, '2', {
-                    fontFamily: 'Courier New',
-                    fontSize: '24px',
-                    color: '#ffffff'
-                }).setOrigin(0.5);
-                
-                let count = 2;
-                const countdown = this.time.addEvent({
-                    delay: 1000,
-                    callback: () => {
-                        count--;
-                        if (count > 0) text.setText(count.toString());
-                        else text.destroy();
-                    },
-                    callbackScope: this,
-                    repeat: 1
-                });
-                
-                this.time.delayedCall(delay, () => {
-                    marker.destroy();
-                    this.createExplosion(x, y, 80, damage, 0x00ffff);
-                    
-                    // Damage enemies in area
-                    this.enemies.getChildren().forEach(enemy => {
-                        const dist = Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y);
-                        if (dist < 80) {
-                            this.damageEnemy(enemy, damage);
-                        }
-                    });
-                });
-            }
-
-            createTimeRift(x, y, duration, slowAmount) {
-                const rift = this.add.ellipse(x, y, 200, 200, 0xffd700, 0.2);
-                rift.setStrokeStyle(3, 0xffd700);
-                
-                // Clock hands
-                const hand1 = this.add.rectangle(x, y, 4, 60, 0xffd700);
-                const hand2 = this.add.rectangle(x, y, 4, 40, 0xffd700);
-                
-                this.tweens.add({
-                    targets: [hand1, hand2],
-                    rotation: Math.PI * 2,
-                    duration: 2000,
-                    repeat: -1
-                });
-                
-                // Slow effect
-                const slowTimer = this.time.addEvent({
-                    delay: 100,
-                    callback: () => {
-                        if (!rift.active) return;
-                        this.enemies.getChildren().forEach(enemy => {
-                            const dist = Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y);
-                            if (dist < 100) {
-                                enemy.speedMultiplier = slowAmount;
-                                enemy.setTint(0xffd700);
-                            } else if (enemy.speedMultiplier === slowAmount) {
-                                enemy.speedMultiplier = 1;
-                                enemy.clearTint();
-                            }
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    rift.destroy();
-                    hand1.destroy();
-                    hand2.destroy();
-                    slowTimer.remove();
-                    
-                    // Reset speeds
-                    this.enemies.getChildren().forEach(enemy => {
-                        if (enemy.active) {
-                            enemy.speedMultiplier = 1;
-                            enemy.clearTint();
-                        }
-                    });
-                });
-            }
-
-            createRewindEffect() {
-                // Ghost images
-                this.player.positionHistory.forEach((pos, i) => {
-                    if (i % 3 === 0) {
-                        const ghost = this.add.circle(pos.x, pos.y, 30, 0xffd700, 0.3);
-                        this.tweens.add({
-                            targets: ghost,
-                            alpha: 0,
-                            scale: 0,
-                            duration: 500,
-                            delay: i * 50,
-                            onComplete: () => ghost.destroy()
-                        });
+            getNearestEnemy(from) {
+                let nearest = null;
+                let minDist = Infinity;
+                this.enemies.getChildren().forEach(enemy => {
+                    const dist = Phaser.Math.Distance.Between(from.x, from.y, enemy.x, enemy.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = enemy;
                     }
                 });
+                return nearest;
             }
 
-            createHasteEffect() {
-                const trail = this.time.addEvent({
-                    delay: 50,
-                    callback: () => {
-                        if (!this.player.active || this.player.speedMultiplier === 1) {
-                            trail.remove();
-                            return;
-                        }
-                        const ghost = this.add.image(this.player.x, this.player.y, 'player_base')
-                            .setTint(0xffd700)
-                            .setAlpha(0.3)
-                            .setScale(0.9);
-                        this.tweens.add({
-                            targets: ghost,
-                            alpha: 0,
-                            duration: 300,
-                            onComplete: () => ghost.destroy()
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-            }
-
-            summonConstruct(duration, health) {
-                const construct = this.physics.add.sprite(
-                    this.player.x + Phaser.Math.Between(-50, 50),
-                    this.player.y + Phaser.Math.Between(-50, 50),
-                    'enemy_support'
-                );
-                construct.setTint(0x00ff88);
-                construct.health = health;
-                construct.maxHealth = health;
-                construct.isConstruct = true;
-                construct.attackCooldown = 0;
-                
-                this.constructs.add(construct);
-                
-                // AI for construct
-                const aiTimer = this.time.addEvent({
-                    delay: 500,
-                    callback: () => {
-                        if (!construct.active) {
-                            aiTimer.remove();
-                            return;
-                        }
-                        
-                        // Find nearest enemy
-                        let nearest = null;
-                        let minDist = Infinity;
-                        this.enemies.getChildren().forEach(enemy => {
-                            const dist = Phaser.Math.Distance.Between(construct.x, construct.y, enemy.x, enemy.y);
-                            if (dist < minDist) {
-                                minDist = dist;
-                                nearest = enemy;
-                            }
-                        });
-                        
-                        if (nearest && minDist < 300) {
-                            const angle = Phaser.Math.Angle.Between(construct.x, construct.y, nearest.x, nearest.y);
-                            construct.setRotation(angle);
-                            
-                            if (minDist > 100) {
-                                construct.setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150);
-                            } else {
-                                construct.setVelocity(0);
-                                if (construct.attackCooldown <= 0) {
-                                    this.fireEnemyProjectile(construct, nearest, 15);
-                                    construct.attackCooldown = 1000;
-                                }
-                            }
-                        } else {
-                            // Follow player
-                            const angle = Phaser.Math.Angle.Between(construct.x, construct.y, this.player.x, this.player.y);
-                            if (minDist > 100) {
-                                construct.setVelocity(Math.cos(angle) * 120, Math.sin(angle) * 120);
-                            } else {
-                                construct.setVelocity(0);
-                            }
-                        }
-                        
-                        construct.attackCooldown -= 500;
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    if (construct.active) {
-                        this.createExplosion(construct.x, construct.y, 50, 0, 0x00ff88);
-                        construct.destroy();
-                    }
-                });
-            }
-
-            createRegenDome(duration, radius, healPerSecond) {
-                const dome = this.add.circle(this.player.x, this.player.y, radius, 0x00ff88, 0.2);
-                dome.setStrokeStyle(3, 0x00ff88);
-                
-                const healTimer = this.time.addEvent({
-                    delay: 500,
-                    callback: () => {
-                        if (!dome.active) return;
-                        
-                        // Heal player
-                        this.healPlayer(healPerSecond / 2);
-                        
-                        // Visual
-                        const pulse = this.add.circle(this.player.x, this.player.y, 20, 0x00ff88, 0.5);
-                        this.tweens.add({
-                            targets: pulse,
-                            scale: 3,
-                            alpha: 0,
-                            duration: 1000,
-                            onComplete: () => pulse.destroy()
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    dome.destroy();
-                    healTimer.remove();
-                });
-            }
-
-            createVoidShield() {
-                const shield = this.add.circle(this.player.x, this.player.y, 60, 0x9d00ff, 0.3);
-                shield.setStrokeStyle(4, 0x9d00ff);
-                
-                let absorbed = 0;
-                
-                // Absorb projectiles
-                const absorbTimer = this.time.addEvent({
-                    delay: 50,
-                    callback: () => {
-                        if (!shield.active || !this.player.active) {
-                            absorbTimer.remove();
-                            return;
-                        }
-                        
-                        shield.setPosition(this.player.x, this.player.y);
-                        
-                        this.projectiles.getChildren().forEach(proj => {
-                            if (proj.owner === 'enemy') {
-                                const dist = Phaser.Math.Distance.Between(
-                                    this.player.x, this.player.y, proj.x, proj.y
-                                );
-                                if (dist < 60) {
-                                    proj.destroy();
-                                    absorbed++;
-                                    this.player.energy = Math.min(
-                                        this.player.energy + 5,
-                                        CONSTANTS.ENERGY_MAX
-                                    );
-                                    
-                                    // Visual
-                                    const absorb = this.add.circle(proj.x, proj.y, 10, 0x9d00ff, 0.8);
-                                    this.tweens.add({
-                                        targets: absorb,
-                                        x: this.player.x,
-                                        y: this.player.y,
-                                        duration: 200,
-                                        onComplete: () => absorb.destroy()
-                                    });
-                                }
-                            }
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(2500, () => {
-                    shield.destroy();
-                    absorbTimer.remove();
-                });
-            }
-
-            createNanoShield(duration, reduction) {
-                this.player.damageReduction = reduction;
-                const shield = this.add.circle(this.player.x, this.player.y, 50, 0x00ff88, 0.3);
-                
-                const updateTimer = this.time.addEvent({
-                    delay: 50,
-                    callback: () => {
-                        if (!shield.active || !this.player.active) {
-                            updateTimer.remove();
-                            return;
-                        }
-                        shield.setPosition(this.player.x, this.player.y);
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    shield.destroy();
-                    updateTimer.remove();
-                    this.player.damageReduction = 0;
-                });
-            }
-
-            createEMPStorm(duration, radius) {
-                const storm = this.add.circle(this.player.x, this.player.y, radius, 0x00ffff, 0.2);
-                storm.setStrokeStyle(4, 0x00ffff);
-                
-                // Lightning effects
-                const lightningTimer = this.time.addEvent({
-                    delay: 200,
-                    callback: () => {
-                        if (!storm.active) return;
-                        
-                        const angle = Math.random() * Math.PI * 2;
-                        const dist = Math.random() * radius;
-                        const x = this.player.x + Math.cos(angle) * dist;
-                        const y = this.player.y + Math.sin(angle) * dist;
-                        
-                        const bolt = this.add.rectangle(x, y, 4, 40, 0x00ffff);
-                        bolt.setRotation(Math.random() * Math.PI);
-                        this.tweens.add({
-                            targets: bolt,
-                            alpha: 0,
-                            duration: 200,
-                            onComplete: () => bolt.destroy()
-                        });
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    storm.destroy();
-                    lightningTimer.remove();
-                });
-            }
-
-            createTimeFreeze(duration, radius) {
-                const freeze = this.add.circle(this.player.x, this.player.y, radius, 0xffffff, 0.4);
-                
-                this.tweens.add({
-                    targets: freeze,
-                    alpha: 0,
-                    scale: 1.5,
-                    duration: duration,
-                    onComplete: () => freeze.destroy()
-                });
-            }
-
-            // Enemy AI
             updateEnemyAI(enemy) {
-                if (!enemy.active || enemy.isStunned || !this.player.active) return;
+                if (!enemy.active || enemy.stunned) return;
                 
-                const distToPlayer = Phaser.Math.Distance.Between(
-                    enemy.x, enemy.y, this.player.x, this.player.y
-                );
-                
-                // Boss phase check
-                if (enemy.behavior === 'boss') {
-                    const healthPercent = enemy.health / enemy.maxHealth;
-                    enemy.enemyType.phases.forEach((phase, idx) => {
-                        if (healthPercent < phase.healthThreshold && !enemy.phaseTriggered[idx]) {
-                            enemy.phaseTriggered[idx] = true;
-                            this.enterBossPhase(enemy, idx);
-                        }
-                    });
-                }
-                
-                switch(enemy.behavior) {
-                    case 'aggressive':
-                        this.aggressiveAI(enemy, distToPlayer);
-                        break;
-                    case 'tactical':
-                        this.tacticalAI(enemy, distToPlayer);
-                        break;
-                    case 'support':
-                        this.supportAI(enemy, distToPlayer);
-                        break;
-                    case 'boss':
-                        this.bossAI(enemy, distToPlayer);
-                        break;
-                }
-                
-                // Attack cooldown
-                if (enemy.attackCooldown > 0) enemy.attackCooldown -= 500;
-            }
-
-            aggressiveAI(enemy, dist) {
+                const dist = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
                 const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
                 
                 if (dist > 100) {
-                    // Charge at player
-                    enemy.setRotation(angle);
-                    const speed = enemy.enemyType.speed * (enemy.speedMultiplier || 1);
-                    enemy.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+                    const speed = enemy.speed * (enemy.slowed ? 0.5 : 1);
+                    enemy.setVelocity(Math.cos(angle) * enemy.speed, Math.sin(angle) * enemy.speed);
                 } else {
-                    // Attack
                     enemy.setVelocity(0);
-                    if (enemy.attackCooldown <= 0) {
-                        this.meleeAttack(enemy, 15);
-                        enemy.attackCooldown = 1500;
-                    }
                 }
                 
-                // Dodge projectiles
-                this.dodgeProjectiles(enemy);
-            }
-
-            tacticalAI(enemy, dist) {
-                const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
-                enemy.setRotation(angle);
+                enemy.rotation = angle;
                 
-                if (dist < 200) {
-                    // Too close, retreat
-                    enemy.setVelocity(-Math.cos(angle) * enemy.enemyType.speed, 
-                                     -Math.sin(angle) * enemy.enemyType.speed);
-                } else if (dist > 400) {
-                    // Too far, approach
-                    enemy.setVelocity(Math.cos(angle) * enemy.enemyType.speed, 
-                                     Math.sin(angle) * enemy.enemyType.speed);
-                } else {
-                    // Optimal range, attack
-                    enemy.setVelocity(0);
-                    if (enemy.attackCooldown <= 0) {
-                        this.fireEnemyProjectile(enemy, this.player, 20);
-                        enemy.attackCooldown = 2000;
-                        
-                        // Lay mine occasionally
-                        if (Math.random() < 0.3) {
-                            this.layMine(enemy);
-                        }
-                    }
+                // Shoot
+                if (dist < 400 && Math.random() < 0.3) {
+                    const bullet = this.bullets.create(enemy.x, enemy.y, 'bullet');
+                    bullet.setTint(0xff0044);
+                    bullet.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                    bullet.damage = enemy.isBoss ? 20 : 10;
+                    bullet.owner = 'enemy';
+                    this.time.delayedCall(2000, () => bullet.destroy());
                 }
-                
-                this.dodgeProjectiles(enemy);
-            }
-
-            supportAI(enemy, dist) {
-                // Find damaged ally
-                let healTarget = null;
-                let minHealth = 1;
-                
-                this.enemies.getChildren().forEach(ally => {
-                    if (ally !== enemy && ally.health / ally.maxHealth < minHealth) {
-                        minHealth = ally.health / ally.maxHealth;
-                        healTarget = ally;
-                    }
-                });
-                
-                if (healTarget && minHealth < 0.5) {
-                    // Heal ally
-                    const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, healTarget.x, healTarget.y);
-                    const distToAlly = Phaser.Math.Distance.Between(enemy.x, enemy.y, healTarget.x, healTarget.y);
-                    
-                    if (distToAlly > 150) {
-                        enemy.setVelocity(Math.cos(angle) * enemy.enemyType.speed,
-                                         Math.sin(angle) * enemy.enemyType.speed);
-                    } else {
-                        enemy.setVelocity(0);
-                        if (enemy.attackCooldown <= 0) {
-                            this.healEnemy(healTarget, 20);
-                            enemy.attackCooldown = 3000;
-                        }
-                    }
-                } else {
-                    // Follow player at distance
-                    const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
-                    if (dist > 300) {
-                        enemy.setVelocity(Math.cos(angle) * enemy.enemyType.speed * 0.7,
-                                         Math.sin(angle) * enemy.enemyType.speed * 0.7);
-                    } else {
-                        enemy.setVelocity(-Math.cos(angle) * 50, -Math.sin(angle) * 50);
-                    }
-                }
-            }
-
-            bossAI(enemy, dist) {
-                const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, this.player.x, this.player.y);
-                enemy.setRotation(angle);
-                
-                // Random skill selection based on phase
-                if (enemy.attackCooldown <= 0) {
-                    const skill = Phaser.Utils.Array.GetRandom(['slam', 'laser', 'summon', 'nova']);
-                    
-                    switch(skill) {
-                        case 'slam':
-                            if (dist < 150) {
-                                this.createRadialBurst(30, 0xff00ff, 200);
-                                this.cameras.main.shake(300, 0.02);
-                                enemy.attackCooldown = 3000;
-                            }
-                            break;
-                        case 'laser':
-                            this.createBeam(Math.cos(angle), Math.sin(angle), 25, 0xff00ff, 2000);
-                            enemy.attackCooldown = 4000;
-                            break;
-                        case 'summon':
-                            this.spawnEnemy('AGGRESSIVE');
-                            this.spawnEnemy('AGGRESSIVE');
-                            enemy.attackCooldown = 10000;
-                            break;
-                        case 'nova':
-                            this.createExplosion(enemy.x, enemy.y, 400, 40, 0xff00ff);
-                            enemy.attackCooldown = 8000;
-                            break;
-                    }
-                }
-                
-                // Movement
-                if (dist < 100) {
-                    enemy.setVelocity(-Math.cos(angle) * 100, -Math.sin(angle) * 100);
-                } else if (dist > 250) {
-                    enemy.setVelocity(Math.cos(angle) * enemy.enemyType.speed,
-                                     Math.sin(angle) * enemy.enemyType.speed);
-                } else {
-                    enemy.setVelocity(
-                        Math.sin(angle) * 50,
-                        -Math.cos(angle) * 50
-                    ); // Strafe
-                }
-            }
-
-            enterBossPhase(enemy, phaseIdx) {
-                this.showFloatingText(enemy.x, enemy.y - 80, `PHASE ${phaseIdx + 2}!`, 0xff00ff, 28);
-                enemy.setTint(0xff0000);
-                this.time.delayedCall(500, () => enemy.clearTint());
-                
-                // Heal slightly
-                enemy.health = Math.min(enemy.health + 100, enemy.maxHealth);
-            }
-
-            dodgeProjectiles(enemy) {
-                this.projectiles.getChildren().forEach(proj => {
-                    if (proj.owner === 'player') {
-                        const dist = Phaser.Math.Distance.Between(enemy.x, enemy.y, proj.x, proj.y);
-                        if (dist < 100) {
-                            const angle = Phaser.Math.Angle.Between(proj.x, proj.y, enemy.x, enemy.y);
-                            enemy.body.velocity.x += Math.cos(angle) * 200;
-                            enemy.body.velocity.y += Math.sin(angle) * 200;
-                        }
-                    }
-                });
-            }
-
-            meleeAttack(enemy, damage) {
-                const dist = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
-                if (dist < 80) {
-                    this.damagePlayer(damage);
-                    
-                    // Visual
-                    const slash = this.add.graphics();
-                    slash.lineStyle(3, enemy.enemyType.color);
-                    slash.beginPath();
-                    slash.moveTo(enemy.x, enemy.y);
-                    slash.lineTo(this.player.x, this.player.y);
-                    slash.strokePath();
-                    this.time.delayedCall(100, () => slash.destroy());
-                }
-            }
-
-            fireEnemyProjectile(enemy, target, damage) {
-                const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, target.x, target.y);
-                const proj = this.physics.add.sprite(
-                    enemy.x + Math.cos(angle) * 40,
-                    enemy.y + Math.sin(angle) * 40,
-                    'proj_plasma'
-                );
-                proj.setTint(enemy.enemyType.color);
-                proj.setVelocity(Math.cos(angle) * 350, Math.sin(angle) * 350);
-                proj.damage = damage;
-                proj.owner = 'enemy';
-                
-                this.projectiles.add(proj);
-                
-                this.time.delayedCall(2000, () => {
-                    if (proj.active) proj.destroy();
-                });
-            }
-
-            layMine(enemy) {
-                const mine = this.physics.add.sprite(enemy.x, enemy.y, 'hazard');
-                mine.setScale(0.5);
-                mine.isMine = true;
-                
-                this.time.delayedCall(5000, () => {
-                    if (mine.active) {
-                        this.createExplosion(mine.x, mine.y, 100, 30, 0xff4400);
-                        mine.destroy();
-                    }
-                });
-                
-                // Check player proximity
-                const checkTimer = this.time.addEvent({
-                    delay: 100,
-                    callback: () => {
-                        if (!mine.active) {
-                            checkTimer.remove();
-                            return;
-                        }
-                        const dist = Phaser.Math.Distance.Between(mine.x, mine.y, this.player.x, this.player.y);
-                        if (dist < 60) {
-                            this.createExplosion(mine.x, mine.y, 100, 30, 0xff4400);
-                            mine.destroy();
-                            checkTimer.remove();
-                        }
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-            }
-
-            healEnemy(enemy, amount) {
-                enemy.health = Math.min(enemy.health + amount, enemy.maxHealth);
-                this.showFloatingText(enemy.x, enemy.y - 40, `+${amount}`, 0x00ff88, 14);
-                
-                // Visual
-                const heal = this.add.circle(enemy.x, enemy.y, 30, 0x00ff88, 0.5);
-                this.tweens.add({
-                    targets: heal,
-                    scale: 2,
-                    alpha: 0,
-                    duration: 500,
-                    onComplete: () => heal.destroy()
-                });
-            }
-
-            // Damage and effects
-            damagePlayer(amount) {
-                if (this.player.isDead) return;
-                
-                // Apply damage reduction
-                if (this.player.damageReduction) {
-                    amount *= (1 - this.player.damageReduction);
-                }
-                
-                this.player.health -= amount;
-                
-                // Visual feedback
-                this.cameras.main.shake(100, 0.01);
-                this.player.setTint(0xff0000);
-                this.time.delayedCall(100, () => {
-                    if (this.player.active) this.player.setTint(this.selectedMage.color);
-                });
-                
-                this.showFloatingText(this.player.x, this.player.y - 40, `-${Math.floor(amount)}`, 0xff0044, 16);
-                
-                if (this.player.health <= 0) {
-                    this.playerDies();
-                }
-            }
-
-            healPlayer(amount) {
-                if (this.player.isDead) return;
-                this.player.health = Math.min(this.player.health + amount, this.player.maxHealth);
-                this.showFloatingText(this.player.x, this.player.y - 40, `+${Math.floor(amount)}`, 0x00ff88, 14);
             }
 
             damageEnemy(enemy, damage) {
                 enemy.health -= damage;
-                
-                // Flash effect
                 enemy.setTint(0xffffff);
-                this.time.delayedCall(50, () => {
-                    if (enemy.active) enemy.setTint(enemy.enemyType.color);
-                });
+                this.time.delayedCall(100, () => enemy.setTint(enemy.isBoss ? 0xff00ff : 0xff0044));
                 
-                // Knockback
-                const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, enemy.x, enemy.y);
-                enemy.body.velocity.x += Math.cos(angle) * 100;
-                enemy.body.velocity.y += Math.sin(angle) * 100;
+                this.showFloatingText(enemy.x, enemy.y - 40, damage.toString(), 0xff0044);
                 
                 if (enemy.health <= 0) {
-                    this.enemyDies(enemy);
+                    this.createExplosion(enemy.x, enemy.y, 60, enemy.isBoss ? 0xff00ff : 0xff0044);
+                    enemy.destroy();
+                    this.score++;
+                    this.scoreText.setText(`Kills: ${this.score}`);
+                    
+                    if (this.enemies.countActive() === 0 && this.gameMode !== 'survival') {
+                        this.showVictory();
+                    }
                 }
             }
 
-            enemyDies(enemy) {
-                // Score
-                this.score++;
+            damagePlayer(amount) {
+                if (this.player.invulnerable || this.player.shield) return;
                 
-                // Death effect
-                this.createExplosion(enemy.x, enemy.y, 60, 0, enemy.enemyType.color);
+                this.player.health -= amount;
+                this.cameras.main.shake(100, 0.01);
+                this.player.setTint(0xff0000);
+                this.time.delayedCall(100, () => this.player.setTint(this.player.mage.color));
                 
-                // Drop energy orb
-                if (Math.random() < 0.3) {
-                    this.spawnEnergyOrb(enemy.x, enemy.y);
+                this.showFloatingText(this.player.x, this.player.y - 50, `-${amount}`, 0xff0044);
+                
+                if (this.player.health <= 0) {
+                    this.gameOver();
                 }
-                
-                // Remove AI timer
-                if (enemy.aiTimer) enemy.aiTimer.remove();
-                
-                enemy.destroy();
             }
 
-            playerDies() {
-                this.player.isDead = true;
-                this.player.setVelocity(0);
+            overloadExplode() {
+                this.player.stunned = true;
+                this.damagePlayer(20);
+                this.player.overload = 50;
+                this.cameras.main.shake(500, 0.03);
+                this.showMessage('OVERLOAD!', 0xff0044);
                 
-                // Death explosion
-                this.createExplosion(this.player.x, this.player.y, 100, 0, this.selectedMage.color);
-                this.player.setVisible(false);
-                this.player.aura.setVisible(false);
-                
-                // Game over
-                this.time.delayedCall(1000, () => {
-                    this.showGameOver(false);
+                this.time.delayedCall(2000, () => {
+                    this.player.stunned = false;
                 });
             }
 
-            spawnEnergyOrb(x, y) {
-                const orb = this.physics.add.sprite(x, y, 'proj_nano');
-                orb.setTint(0x00aaff);
-                
-                this.tweens.add({
-                    targets: orb,
-                    scale: 1.2,
-                    yoyo: true,
-                    duration: 500,
-                    repeat: -1
-                });
-                
-                // Magnet to player
-                const magnetTimer = this.time.addEvent({
-                    delay: 50,
-                    callback: () => {
-                        if (!orb.active) {
-                            magnetTimer.remove();
-                            return;
-                        }
-                        
-                        const dist = Phaser.Math.Distance.Between(orb.x, orb.y, this.player.x, this.player.y);
-                        if (dist < 300) {
-                            const angle = Phaser.Math.Angle.Between(orb.x, orb.y, this.player.x, this.player.y);
-                            orb.body.velocity.x = Math.cos(angle) * 200;
-                            orb.body.velocity.y = Math.sin(angle) * 200;
-                        }
-                        
-                        if (dist < 30) {
-                            this.player.energy = Math.min(this.player.energy + 20, CONSTANTS.ENERGY_MAX);
-                            this.showFloatingText(this.player.x, this.player.y - 60, '+ENERGY', 0x00aaff, 14);
-                            orb.destroy();
-                            magnetTimer.remove();
-                        }
-                    },
-                    callbackScope: this,
-                    loop: true
+            regenEnergy() {
+                if (this.player.active) {
+                    this.player.energy = Math.min(this.player.energy + 10, CONSTANTS.ENERGY_MAX);
+                    this.player.overload = Math.max(this.player.overload - 5, 0);
+                }
+            }
+
+            updateCooldowns(delta) {
+                Object.keys(this.cooldowns).forEach(key => {
+                    if (this.cooldowns[key] > 0) this.cooldowns[key] -= delta;
                 });
             }
 
-            stunEnemy(enemy, duration) {
-                enemy.isStunned = true;
-                enemy.setTint(0xffff00);
+            updateUI() {
+                // Health
+                const hp = this.player.health / this.player.maxHealth;
+                this.healthFill.setScale(hp, 1);
+                this.healthFill.setTint(hp > 0.5 ? 0x00ff44 : 0xff0044);
                 
-                this.time.delayedCall(duration, () => {
-                    if (enemy.active) {
-                        enemy.isStunned = false;
-                        enemy.clearTint();
+                // Energy
+                this.energyFill.setScale(this.player.energy / CONSTANTS.ENERGY_MAX, 1);
+                
+                // Overload
+                const ol = this.player.overload / CONSTANTS.OVERLOAD_MAX;
+                this.overloadFill.setAlpha(ol > 0 ? 0.7 : 0);
+                this.overloadFill.setScale(Math.min(ol, 1), 1);
+                this.warningText.setVisible(this.player.overload > CONSTANTS.OVERLOAD_THRESHOLD);
+                
+                // Skill cooldowns
+                const keys = ['q', 'e', 'r'];
+                this.skillButtons.forEach((btn, i) => {
+                    const cd = this.cooldowns[keys[i]];
+                    btn.cooldownOverlay.setVisible(cd > 0);
+                    if (cd > 0) {
+                        btn.cooldownOverlay.setScale(1, cd / 3000);
                     }
                 });
+                
+                // Ultimate
+                this.ultCd.setVisible(this.cooldowns.space > 0);
+                if (this.cooldowns.space > 0) {
+                    this.ultCd.setScale(1, this.cooldowns.space / 15000);
+                }
             }
 
-            silenceEnemy(enemy, duration) {
-                enemy.isSilenced = true;
-                const icon = this.add.text(enemy.x, enemy.y - 50, '🔇', {
-                    fontSize: '20px'
-                }).setOrigin(0.5);
-                
-                const followTimer = this.time.addEvent({
-                    delay: 50,
-                    callback: () => {
-                        if (!enemy.active) {
-                            icon.destroy();
-                            followTimer.remove();
-                            return;
-                        }
-                        icon.setPosition(enemy.x, enemy.y - 50);
-                    },
-                    callbackScope: this,
-                    loop: true
-                });
-                
-                this.time.delayedCall(duration, () => {
-                    if (enemy.active) enemy.isSilenced = false;
-                    icon.destroy();
-                    followTimer.remove();
-                });
-            }
-
-            // Visual effects
-            createExplosion(x, y, radius, damage, color) {
-                const explosion = this.add.circle(x, y, 10, color, 0.8);
-                
-                this.tweens.add({
-                    targets: explosion,
-                    radius: radius,
-                    alpha: 0,
-                    duration: 400,
-                    onComplete: () => explosion.destroy()
-                });
-                
-                // Shockwave
-                const shockwave = this.add.circle(x, y, radius, color, 0);
-                shockwave.setStrokeStyle(4, color);
-                
-                this.tweens.add({
-                    targets: shockwave,
-                    radius: radius * 2,
-                    alpha: 0,
-                    duration: 600,
-                    onComplete: () => shockwave.destroy()
-                });
-            }
-
-            createImpactEffect(x, y, type) {
-                const color = type.includes('void') ? 0x9d00ff : 
-                             type.includes('plasma') ? 0xff4400 :
-                             type.includes('lightning') ? 0x00ffff : 0xffffff;
-                
-                const impact = this.add.circle(x, y, 20, color, 0.6);
-                this.tweens.add({
-                    targets: impact,
-                    scale: 0,
-                    alpha: 0,
-                    duration: 300,
-                    onComplete: () => impact.destroy()
-                });
-            }
-
-            createTeleportEffect(x, y) {
-                const ring = this.add.circle(x, y, 10, 0x00ffff, 0);
-                ring.setStrokeStyle(3, 0x00ffff);
-                
-                this.tweens.add({
-                    targets: ring,
-                    radius: 60,
-                    alpha: 0,
-                    duration: 400,
-                    onComplete: () => ring.destroy()
-                });
-            }
-
-            createSkillCastEffect() {
-                const burst = this.add.circle(this.player.x, this.player.y, 40, this.selectedMage.color, 0.5);
-                this.tweens.add({
-                    targets: burst,
-                    scale: 2,
-                    alpha: 0,
-                    duration: 300,
-                    onComplete: () => burst.destroy()
-                });
-            }
-
-            createClockEffect(x, y) {
-                const clock = this.add.circle(x, y, 30, 0xffd700, 0.3);
-                const hand = this.add.rectangle(x, y, 2, 25, 0xffd700);
-                
-                this.tweens.add({
-                    targets: hand,
-                    rotation: Math.PI * 2,
-                    duration: 1000,
-                    repeat: 2,
-                    onComplete: () => {
-                        clock.destroy();
-                        hand.destroy();
-                    }
-                });
-            }
-
-            createHealEffect(x, y) {
-                const cross = this.add.text(x, y, '+', {
-                    fontFamily: 'Courier New',
-                    fontSize: '40px',
-                    color: '#00ff88'
-                }).setOrigin(0.5);
-                
-                this.tweens.add({
-                    targets: cross,
-                    y: y - 50,
-                    alpha: 0,
-                    duration: 800,
-                    onComplete: () => cross.destroy()
-                });
-            }
-
-            showFloatingText(x, y, text, color, size) {
-                const hexColor = color.toString(16).padStart(6, '0');
+            showFloatingText(x, y, text, color) {
                 const txt = this.add.text(x, y, text, {
-                    fontFamily: 'Courier New',
-                    fontSize: `${size}px`,
+                    fontSize: '20px',
                     fontStyle: 'bold',
-                    color: `#${hexColor}`,
-                    stroke: '#000000',
-                    strokeThickness: 3
+                    color: '#' + color.toString(16).padStart(6, '0')
                 }).setOrigin(0.5);
                 
                 this.tweens.add({
                     targets: txt,
                     y: y - 60,
                     alpha: 0,
-                    duration: 1000,
+                    duration: 800,
                     onComplete: () => txt.destroy()
                 });
             }
 
-            updateEffects() {
-                // Update construct positions
-                this.constructs.getChildren().forEach(construct => {
-                    if (construct.health <= 0) {
-                        this.createExplosion(construct.x, construct.y, 50, 0, 0x00ff88);
-                        construct.destroy();
-                    }
+            showMessage(text, color) {
+                const msg = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 100, text, {
+                    fontSize: '32px',
+                    fontStyle: 'bold',
+                    color: '#' + color.toString(16).padStart(6, '0')
+                }).setOrigin(0.5).setScrollFactor(0);
+                
+                this.tweens.add({
+                    targets: msg,
+                    scale: 1.5,
+                    alpha: 0,
+                    duration: 1000,
+                    onComplete: () => msg.destroy()
                 });
             }
 
-            updateMatchTimer() {
-                this.matchTime--;
-                const minutes = Math.floor(this.matchTime / 60);
-                const seconds = this.matchTime % 60;
-                this.timerText.setText(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+            showVictory() {
+                this.add.rectangle(this.cameras.main.centerX, this.cameras.main.centerY, 
+                    this.cameras.main.width, this.cameras.main.height, 0x000000, 0.8).setScrollFactor(0);
                 
-                if (this.matchTime <= 0) {
-                    this.showGameOver(true);
-                }
+                this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 50, 'VICTORY!', {
+                    fontSize: '48px',
+                    color: '#00ff88',
+                    fontStyle: 'bold'
+                }).setOrigin(0.5).setScrollFactor(0);
+                
+                this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 20, 
+                    `Kills: ${this.score}`, {
+                    fontSize: '24px',
+                    color: '#ffffff'
+                }).setOrigin(0.5).setScrollFactor(0);
+                
+                const restart = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 100, 
+                    'PLAY AGAIN', {
+                    fontSize: '24px',
+                    color: '#00aaff',
+                    backgroundColor: '#1a1a3a',
+                    padding: { x: 20, y: 10 }
+                }).setOrigin(0.5).setScrollFactor(0).setInteractive();
+                
+                restart.on('pointerdown', () => this.scene.restart());
             }
 
-            checkGameState() {
-                // Check win condition
-                if (this.enemies.countActive() === 0 && this.gameMode !== 'survival') {
-                    this.time.delayedCall(1000, () => this.showGameOver(true));
-                }
-            }
-
-            showGameOver(victory) {
-                const overlay = this.add.rectangle(
-                    this.cameras.main.centerX,
-                    this.cameras.main.centerY,
-                    this.cameras.main.width,
-                    this.cameras.main.height,
-                    0x000000,
-                    0.8
-                ).setScrollFactor(0);
+            gameOver() {
+                this.player.destroy();
                 
-                const title = this.add.text(
-                    this.cameras.main.centerX,
-                    this.cameras.main.centerY - 50,
-                    victory ? 'VICTORY' : 'DEFEAT',
-                    {
-                        fontFamily: 'Courier New',
-                        fontSize: '48px',
-                        fontStyle: 'bold',
-                        color: victory ? '#00ff88' : '#ff0044'
-                    }
-                ).setOrigin(0.5).setScrollFactor(0);
+                this.add.rectangle(this.cameras.main.centerX, this.cameras.main.centerY, 
+                    this.cameras.main.width, this.cameras.main.height, 0x000000, 0.9).setScrollFactor(0);
                 
-                const stats = this.add.text(
-                    this.cameras.main.centerX,
-                    this.cameras.main.centerY + 20,
-                    `Kills: ${this.score}\nWave: ${this.waveNumber}`,
-                    {
-                        fontFamily: 'Courier New',
-                        fontSize: '20px',
-                        color: '#ffffff',
-                        align: 'center'
-                    }
-                ).setOrigin(0.5).setScrollFactor(0);
+                this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 50, 'DEFEAT', {
+                    fontSize: '48px',
+                    color: '#ff0044',
+                    fontStyle: 'bold'
+                }).setOrigin(0.5).setScrollFactor(0);
                 
-                const restartBtn = this.add.text(
-                    this.cameras.main.centerX,
-                    this.cameras.main.centerY + 100,
-                    'PLAY AGAIN',
-                    {
-                        fontFamily: 'Courier New',
-                        fontSize: '24px',
-                        color: '#00aaff',
-                        backgroundColor: '#1a1a3a',
-                        padding: { x: 20, y: 10 }
-                    }
-                ).setOrigin(0.5).setScrollFactor(0).setInteractive();
+                const restart = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 50, 
+                    'TRY AGAIN', {
+                    fontSize: '24px',
+                    color: '#00aaff',
+                    backgroundColor: '#1a1a3a',
+                    padding: { x: 20, y: 10 }
+                }).setOrigin(0.5).setScrollFactor(0).setInteractive();
                 
-                restartBtn.on('pointerdown', () => {
-                    this.scene.restart({ mode: this.gameMode, mageClass: this.selectedMage.id });
-                });
-                
-                const menuBtn = this.add.text(
-                    this.cameras.main.centerX,
-                    this.cameras.main.centerY + 160,
-                    'MAIN MENU',
-                    {
-                        fontFamily: 'Courier New',
-                        fontSize: '20px',
-                        color: '#ffffff'
-                    }
-                ).setOrigin(0.5).setScrollFactor(0).setInteractive();
-                
-                menuBtn.on('pointerdown', () => {
-                    this.scene.start('MenuScene');
-                });
+                restart.on('pointerdown', () => this.scene.restart());
             }
         }
 
         // ==========================================
-        // GAME CONFIGURATION
+        // GAME CONFIG
         // ==========================================
         const config = {
             type: Phaser.AUTO,
@@ -3158,10 +1387,8 @@
             scene: [BootScene, MenuScene, SelectScene, GameScene]
         };
 
-        // Initialize game
         const game = new Phaser.Game(config);
 
-        // Handle window resize
         window.addEventListener('resize', () => {
             game.scale.resize(window.innerWidth, window.innerHeight);
         });
